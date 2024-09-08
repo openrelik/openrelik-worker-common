@@ -1,2 +1,5 @@
 # openrelik-worker-common
-Common utilities and helper functions for OpenRelik workers
+Common utilities for OpenRelik workers
+
+##### Obligatory Fine Print
+This is not an official Google product (experimental or otherwise), it is just code that happens to be owned by Google.
