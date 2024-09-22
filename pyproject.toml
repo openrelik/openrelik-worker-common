@@ -1,13 +1,12 @@
 [tool.poetry]
 name = "openrelik-worker-common"
-version = "2024.09.19"
+version = "2024.09.22"
 description = "Common utilities for OpenRelik workers"
 authors = ["Johan Berggren <jberggren@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-
 
 [build-system]
 requires = ["poetry-core"]
