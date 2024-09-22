@@ -96,7 +96,11 @@ class OutputFile:
     """
 
     def __init__(
-        self, output_path: str, filename: str = None, file_extension: str = None
+        self,
+        output_path: str,
+        filename: str = None,
+        file_extension: str = None,
+        data_type: str = None,
     ):
         """Initialize an OutputFile object.
 
@@ -107,6 +111,7 @@ class OutputFile:
         """
         self.uuid = uuid4().hex
         self.display_name = self._generate_display_name(filename, file_extension)
+        self.data_type = data_type
         self.filename = self._generate_filename(file_extension)
         self.path = os.path.join(output_path, self.filename)
 
@@ -145,13 +150,17 @@ class OutputFile:
         return {
             "filename": self.filename,
             "display_name": self.display_name,
+            "data_type": self.data_type,
             "uuid": self.uuid,
             "path": self.path,
         }
 
 
 def create_output_file(
-    output_path: str, filename: str = None, file_extension: str = None
+    output_path: str,
+    filename: str = None,
+    file_extension: str = None,
+    data_type: str = "worker:generic:file",
 ) -> OutputFile:
     """Creates and returns an OutputFile object.
 
@@ -159,8 +168,9 @@ def create_output_file(
         output_path: The path to the output directory.
         filename: The name of the output file (optional).
         file_extension: The extension of the output file (optional).
+        data_type: The data type of the output file (optional).
 
     Returns:
         An OutputFile object.
     """
-    return OutputFile(output_path, filename, file_extension)
+    return OutputFile(output_path, filename, file_extension, data_type)
