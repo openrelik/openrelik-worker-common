@@ -160,7 +160,7 @@ def create_output_file(
     output_path: str,
     filename: str = None,
     file_extension: str = None,
-    data_type: str = "worker:generic:file",
+    data_type: str = "openrelik:worker:file:generic",
 ) -> OutputFile:
     """Creates and returns an OutputFile object.
 
