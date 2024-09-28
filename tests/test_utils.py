@@ -6,12 +6,15 @@ from openrelik_worker_common import utils
 
 
 class Utils(unittest.TestCase):
+    """Test the utils helper functions."""
 
     def test_dict_to_b64_string(self):
+        """Test dict_to_b64_string function."""
         result = utils.dict_to_b64_string({"a": "b"})
         self.assertEqual(result, "eyJhIjogImIifQ==")
 
     def test_count_lines_in_file(self):
+        """Test count_lines_in_file function."""
         mock_file_content = """Line1
         Line2
         Line3
@@ -24,6 +27,7 @@ class Utils(unittest.TestCase):
         file.unlink()
 
     def test_get_input_files_input(self):
+        """Test get_input_files function for input_files."""
         input_file = []
         input_file.append(utils.create_output_file("test/test"))
 
@@ -32,6 +36,7 @@ class Utils(unittest.TestCase):
         self.assertEqual(result, input_file)
 
     def test_get_input_files_pipe(self):
+        """Test get_input_files function for pipe_result."""
         pipe_input = "eyJvdXRwdXRfZmlsZXMiOiAiL3Rlc3QvdGVzdCJ9"
         result = utils.get_input_files(pipe_result=pipe_input,
                                        input_files=None)
@@ -39,6 +44,7 @@ class Utils(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_task_result(self):
+        """˜Test task_result function."""
         output_files = ["a", "b"]
         workflow_id = "1234456789"
         command = "/bin/command"
@@ -59,25 +65,32 @@ class Utils(unittest.TestCase):
 
     @unittest.mock.patch("openrelik_worker_common.utils.uuid4")
     def test_create_output_file(self, mock_uuid):
+        """Test create_output_file function."""
+
+        # Generate a mocked uuid.hex()
         h = unittest.mock.MagicMock()
         h.hex = "123456789"
         mock_uuid.return_value = h
 
+        # Test with only an output_path.
         result = utils.create_output_file(output_path="output_path/")
         self.assertEqual(result.display_name, "123456789")
         self.assertEqual(result.path, "output_path/123456789")
 
+        # Test with an extra file_name.
         result = utils.create_output_file(output_path="output_path/",
                                           filename="test.txt")
         self.assertEqual(result.display_name, "test.txt")
         self.assertEqual(result.path, "output_path/123456789")
 
+        # Test with an extra file_extension.
         result = utils.create_output_file(output_path="output_path/",
                                           filename="test",
                                           file_extension="txt")
         self.assertEqual(result.display_name, "test.txt")
         self.assertEqual(result.path, "output_path/123456789")
 
+        # Test with an extra source_file_id OutputFile instance.
         source_file_id = utils.create_output_file(output_path="output_path/")
         result = utils.create_output_file(output_path="output_path/",
                                           source_file_id=source_file_id)
@@ -85,6 +98,7 @@ class Utils(unittest.TestCase):
 
     @unittest.mock.patch("openrelik_worker_common.utils.uuid4")
     def test_outputfile_to_dict(self, mock_uuid):
+        """Test the outputfile_to_dict function."""
         uuid = unittest.mock.MagicMock()
         uuid.hex = "123456789"
         mock_uuid.return_value = uuid
