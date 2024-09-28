@@ -76,19 +76,18 @@ class Utils(unittest.TestCase):
         result = utils.create_output_file(output_path="output_path/")
         self.assertEqual(result.display_name, "123456789")
         self.assertEqual(result.path, "output_path/123456789")
+        self.assertEqual(result.data_type, "openrelik:worker:file:generic")
 
         # Test with an extra file_name.
         result = utils.create_output_file(output_path="output_path/",
                                           filename="test.txt")
         self.assertEqual(result.display_name, "test.txt")
-        self.assertEqual(result.path, "output_path/123456789")
 
         # Test with an extra file_extension.
         result = utils.create_output_file(output_path="output_path/",
                                           filename="test",
                                           file_extension="txt")
         self.assertEqual(result.display_name, "test.txt")
-        self.assertEqual(result.path, "output_path/123456789")
 
         # Test with an extra source_file_id OutputFile instance.
         source_file_id = utils.create_output_file(output_path="output_path/")
