@@ -63,20 +63,47 @@ class Utils(unittest.TestCase):
         h.hex = "123456789"
         mock_uuid.return_value = h
 
-        result = utils.create_output_file(output_path="test/")
+        result = utils.create_output_file(output_path="output_path/")
         self.assertEqual(result.display_name, "123456789")
-        self.assertEqual(result.path, "test/123456789")
+        self.assertEqual(result.path, "output_path/123456789")
 
-        result = utils.create_output_file(output_path="test/",
+        result = utils.create_output_file(output_path="output_path/",
                                           filename="test.txt")
         self.assertEqual(result.display_name, "test.txt")
-        self.assertEqual(result.path, "test/123456789")
+        self.assertEqual(result.path, "output_path/123456789")
 
-        result = utils.create_output_file(output_path="test/",
+        result = utils.create_output_file(output_path="output_path/",
                                           filename="test",
                                           file_extension="txt")
         self.assertEqual(result.display_name, "test.txt")
-        self.assertEqual(result.path, "test/123456789")
+        self.assertEqual(result.path, "output_path/123456789")
+
+        source_file_id = utils.create_output_file(output_path="output_path/")
+        result = utils.create_output_file(output_path="output_path/",
+                                          source_file_id=source_file_id)
+        self.assertEqual(result.source_file_id.uuid, source_file_id.uuid)
+
+    @unittest.mock.patch("openrelik_worker_common.utils.uuid4")
+    def test_outputfile_to_dict(self, mock_uuid):
+        uuid = unittest.mock.MagicMock()
+        uuid.hex = "123456789"
+        mock_uuid.return_value = uuid
+
+        parent_outputfile = utils.create_output_file(
+            output_path="output_path/")
+        outputfile = utils.create_output_file(output_path="output_path/",
+                                              source_file_id=parent_outputfile)
+        result = outputfile.to_dict()
+        expected = {
+            "filename": "123456789",
+            "display_name": "123456789",
+            "data_type": "openrelik:worker:file:generic",
+            "uuid": "123456789",
+            "path": "output_path/123456789",
+            "original_path": None,
+            "source_file_id": parent_outputfile,
+        }
+        self.assertDictEqual(result, expected)
 
 
 if __name__ == '__main__':

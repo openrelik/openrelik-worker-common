@@ -97,10 +97,12 @@ class OutputFile:
     Attributes:
         uuid: Unique identifier for the file.
         display_name: Display name for the file.
+        file_extension: File extension for the file.
         filename: Filename for the file.
-        path: Full path to the file.
-        original_path: Full original path to the file.
-        source_file: Full original source file path.
+        path: The full path to the file.
+        output_path: The path to the output directory.
+        original_path: The full original path to the file.
+        source_file_id: The OutputFile this file belongs to.
     """
 
     def __init__(
@@ -125,20 +127,10 @@ class OutputFile:
         self.display_name = self._generate_display_name(
             filename, file_extension)
         self.data_type = data_type
-        self.filename = self._generate_filename()
+        self.filename = self.uuid
         self.path = os.path.join(output_path, self.filename)
         self.original_path = original_path
         self.source_file_id = source_file_id
-
-    def _generate_filename(self):
-        """Generate the filename for the output file based on the UUID.
-
-        Args: None
-
-        Returns:
-            The filename for the output file.
-        """
-        return self.uuid
 
     def _generate_display_name(self,
                                filename: str = None,
@@ -174,10 +166,10 @@ class OutputFile:
 
 def create_output_file(
     output_path: str,
-    filename: str = None,
-    file_extension: str = None,
-    data_type: str = "openrelik:worker:file:generic",
-    original_path: str = None,
+    filename: Optional[str] = None,
+    file_extension: Optional[str] = None,
+    data_type: Optional[str] = "openrelik:worker:file:generic",
+    original_path: Optional[str] = None,
     source_file_id: Optional[OutputFile] = None,
 ) -> OutputFile:
     """Creates and returns an OutputFile object.
