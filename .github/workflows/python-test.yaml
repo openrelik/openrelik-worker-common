@@ -21,4 +21,4 @@ jobs:
         poetry install --with test --no-root
     - name: Test with pytest - ${{ matrix.python-version }}
       run: |
-        poetry run pytest --cov=.
+        poetry run pytest --cov=. -v
