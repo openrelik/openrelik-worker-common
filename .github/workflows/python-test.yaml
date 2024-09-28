@@ -18,7 +18,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install poetry
-        poetry install ---group test --no-root
+        poetry install ---with test --no-root
     - name: Test with pytest - ${{ matrix.python-version }}
       run: |
         poeytr run pytest --cov=.
