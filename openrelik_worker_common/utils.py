@@ -244,4 +244,5 @@ def delete_file_tree(root_path: tempfile.TemporaryDirectory):
     if not isinstance(root_path, tempfile.TemporaryDirectory):
         raise TypeError("Root path is not a TemporaryDirectory object!")
 
-    shutil.rmtree(root_path.name)
+    # shutil.rmtree(root_path.name)
+    root_path.cleanup()
