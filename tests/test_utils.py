@@ -1,9 +1,8 @@
 import unittest
 import unittest.mock
-import tempfile
+from pathlib import Path
 
 from openrelik_worker_common import utils
-from pathlib import Path
 
 
 class Utils(unittest.TestCase):
@@ -59,7 +58,7 @@ class Utils(unittest.TestCase):
         self.assertEqual(result, utils.dict_to_b64_string(expected))
 
     @unittest.mock.patch("openrelik_worker_common.utils.uuid4")
-    def test_create_output_file_displayname(self, mock_uuid):
+    def test_create_output_file(self, mock_uuid):
         h = unittest.mock.MagicMock()
         h.hex = "123456789"
         mock_uuid.return_value = h

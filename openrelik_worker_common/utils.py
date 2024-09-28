@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations  # support forward looking type hints
+
 import base64
 import json
 import os
 import subprocess
+
 from uuid import uuid4
+from typing import Optional
 
 
 def dict_to_b64_string(dict_to_encode: dict) -> str:
@@ -56,15 +60,17 @@ def get_input_files(pipe_result: str, input_files: list) -> list:
         The input files for the task.
     """
     if pipe_result:
-        result_string = base64.b64decode(pipe_result.encode("utf-8")).decode("utf-8")
+        result_string = base64.b64decode(
+            pipe_result.encode("utf-8")).decode("utf-8")
         result_dict = json.loads(result_string)
         input_files = result_dict.get("output_files")
     return input_files
 
 
-def task_result(
-    output_files: list, workflow_id: str, command: str, meta: dict = None
-) -> str:
+def task_result(output_files: list,
+                workflow_id: str,
+                command: str,
+                meta: dict = None) -> str:
     """Create a task result dictionary and encode it to a base64 string.
 
     Args:
@@ -93,14 +99,18 @@ class OutputFile:
         display_name: Display name for the file.
         filename: Filename for the file.
         path: Full path to the file.
+        original_path: Full original path to the file.
+        source_file: Full original source file path.
     """
 
     def __init__(
         self,
         output_path: str,
-        filename: str = None,
-        file_extension: str = None,
-        data_type: str = None,
+        filename: Optional[str] = None,
+        file_extension: Optional[str] = None,
+        data_type: Optional[str] = None,
+        original_path: Optional[str] = None,
+        source_file_id: Optional[OutputFile] = None,
     ):
         """Initialize an OutputFile object.
 
@@ -108,27 +118,31 @@ class OutputFile:
             output_path: The path to the output directory.
             filename: The name of the output file (optional).
             file_extension: The extension of the output file (optional).
+            orignal_path: The orignal path of the file (optional).
+            source_file_id: The OutputFile this file belongs to (optional).
         """
         self.uuid = uuid4().hex
-        self.display_name = self._generate_display_name(filename, file_extension)
+        self.display_name = self._generate_display_name(
+            filename, file_extension)
         self.data_type = data_type
-        self.filename = self._generate_filename(file_extension)
+        self.filename = self._generate_filename()
         self.path = os.path.join(output_path, self.filename)
+        self.original_path = original_path
+        self.source_file_id = source_file_id
 
-    def _generate_filename(self, file_extension: str = None):
+    def _generate_filename(self):
         """Generate the filename for the output file based on the UUID.
 
-        Args:
-            file_extension: The extension of the output file (optional).
+        Args: None
 
         Returns:
             The filename for the output file.
         """
-        return f"{self.uuid}.{file_extension}" if file_extension else self.uuid
+        return self.uuid
 
-    def _generate_display_name(
-        self, filename: str = None, file_extension: str = None
-    ) -> str:
+    def _generate_display_name(self,
+                               filename: str = None,
+                               file_extension: str = None) -> str:
         """Generate the display name for the output file.
 
         Args:
@@ -153,6 +167,8 @@ class OutputFile:
             "data_type": self.data_type,
             "uuid": self.uuid,
             "path": self.path,
+            "original_path": self.original_path,
+            "source_file_id": self.source_file_id,
         }
 
 
@@ -161,6 +177,8 @@ def create_output_file(
     filename: str = None,
     file_extension: str = None,
     data_type: str = "openrelik:worker:file:generic",
+    original_path: str = None,
+    source_file_id: Optional[OutputFile] = None,
 ) -> OutputFile:
     """Creates and returns an OutputFile object.
 
@@ -169,8 +187,11 @@ def create_output_file(
         filename: The name of the output file (optional).
         file_extension: The extension of the output file (optional).
         data_type: The data type of the output file (optional).
+        orignal_path: The orignal path of the file (optional).
+        source_file_id: The OutputFile this file belongs to (optional).
 
     Returns:
         An OutputFile object.
     """
-    return OutputFile(output_path, filename, file_extension, data_type)
+    return OutputFile(output_path, filename, file_extension, data_type,
+                      original_path, source_file_id)
