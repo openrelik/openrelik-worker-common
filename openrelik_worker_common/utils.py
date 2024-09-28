@@ -17,10 +17,13 @@ from __future__ import annotations  # support forward looking type hints
 import base64
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 
-from uuid import uuid4
+from pathlib import Path, PurePath
 from typing import Optional
+from uuid import uuid4
 
 
 def dict_to_b64_string(dict_to_encode: dict) -> str:
@@ -187,3 +190,58 @@ def create_output_file(
     """
     return OutputFile(output_path, filename, file_extension, data_type,
                       original_path, source_file_id)
+
+
+def get_path_without_root(path: str) -> str:
+    """Converts a full path to relative path without the root.
+
+    Args:
+        path: A full path.
+
+    Returns:
+        A relative path without the root.
+    """
+    return str(PurePath(path).relative_to('/'))
+
+
+def build_file_tree(files: list[OutputFile]) -> tempfile.TemporaryDirectory:
+    """Creates the original file tree structure from a list of OutputFiles.
+
+    Args:
+        files: A list of OutPutFile instances.
+
+    Returns:
+        The root path of the file tree as a TemporaryDirectory.
+    """
+    tree_root = tempfile.TemporaryDirectory(delete=False)
+    for f in files:
+        original_path_resolved = Path(f.original_path)
+        original_folder = original_path_resolved.parent
+        relative_original_folder = get_path_without_root(original_folder)
+        #Create full folder
+        try:
+            os.makedirs(os.path.join(tree_root.name, relative_original_folder))
+        except FileExistsError:
+            pass
+        # Create hardlink to file
+        os.link(
+            f.path,
+            os.path.join(tree_root.name, relative_original_folder,
+                         original_path_resolved.name))
+
+    return tree_root
+
+
+def delete_file_tree(root_path: tempfile.TemporaryDirectory):
+    """Delete a temporary file tree folder structure.
+
+    Args:
+        root_path: TemporaryDirectory root object of file tree structure.
+
+    Returns: None
+    Raises: TypeError
+    """
+    if not isinstance(root_path, tempfile.TemporaryDirectory):
+        raise TypeError("Root path is not a TemporaryDirectory object!")
+
+    shutil.rmtree(root_path.name)

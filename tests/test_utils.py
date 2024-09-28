@@ -1,5 +1,7 @@
 import unittest
 import unittest.mock
+import os
+import tempfile
 from pathlib import Path
 
 from openrelik_worker_common import utils
@@ -7,6 +9,16 @@ from openrelik_worker_common import utils
 
 class Utils(unittest.TestCase):
     """Test the utils helper functions."""
+
+    def assertFileExists(self, path):
+        """Helper function to check if file exists."""
+        if not Path(path).resolve().is_file():
+            raise AssertionError(f"File does not exist: {path}")
+
+    def assertFileDoesNotExists(self, path):
+        """Helper function to check if file does not exists."""
+        if Path(path).resolve().is_file():
+            raise AssertionError(f"File exists: {path}")
 
     def test_dict_to_b64_string(self):
         """Test dict_to_b64_string function."""
@@ -117,6 +129,47 @@ class Utils(unittest.TestCase):
             "source_file_id": parent_outputfile,
         }
         self.assertDictEqual(result, expected)
+
+    def test_build_file_tree(self):
+        """Test the build_file_tree function."""
+        test_paths = [
+            "/etc/xxx/sshd_config", "/etc/xxx_version", "/etc/xxx/ssh_config",
+            "/etc/../xxx/config"
+        ]
+        files: utils.OutputFile = []
+        output_path = tempfile.TemporaryDirectory(delete=False)
+        for path in test_paths:
+            file = utils.create_output_file(output_path.name,
+                                            original_path=path)
+            open(file.path, 'a', encoding="utf-8").close()
+            files.append(file)
+
+        file_tree_root = utils.build_file_tree(files)
+
+        for path in test_paths:
+            self.assertFileExists(
+                os.path.join(file_tree_root.name,
+                             utils.get_path_without_root(path)))
+
+        utils.delete_file_tree(file_tree_root)
+
+    def test_delete_file_tree(self):
+        """Test delete_file_tree function."""
+        with self.assertRaises(TypeError):
+            utils.delete_file_tree("not-a-temp-directory-object")
+
+        tmpdir = tempfile.TemporaryDirectory(delete=False)
+        filepath = os.path.join(tmpdir.name, "testfile")
+        open(filepath, 'a', encoding="utf-8").close()
+
+        utils.delete_file_tree(tmpdir)
+
+        self.assertFileDoesNotExists(filepath)
+
+    def test_get_path_without_root(self):
+        """Test get_path_without_root function."""
+        relative_path = utils.get_path_without_root("/xxx/yyy/test.txt")
+        self.assertEqual(relative_path, "xxx/yyy/test.txt")
 
 
 if __name__ == '__main__':
