@@ -214,9 +214,9 @@ def build_file_tree(files: list[OutputFile]) -> tempfile.TemporaryDirectory:
         The root path of the file tree as a TemporaryDirectory.
     """
     tree_root = tempfile.TemporaryDirectory(delete=False)
-    for f in files:
-        original_filename = Path(f.original_path).name
-        original_folder = Path(f.original_path).parent
+    for file in files:
+        original_filename = Path(file.original_path).name
+        original_folder = Path(file.original_path).parent
         relative_original_folder = get_path_without_root(original_folder)
         #Create full folder
         try:
@@ -225,7 +225,7 @@ def build_file_tree(files: list[OutputFile]) -> tempfile.TemporaryDirectory:
             pass
         # Create hardlink to file
         os.link(
-            f.path,
+            file.path,
             os.path.join(tree_root.name, relative_original_folder,
                          original_filename))
 

@@ -132,15 +132,15 @@ class Utils(unittest.TestCase):
 
     def test_build_file_tree(self):
         """Test the build_file_tree function."""
-        test_paths = [
-            "/etc/xxx/sshd_config", "/etc/xxx_version", "/etc/xxx/ssh_config",
-            "/etc/../xxx/config"
-        ]
+        test_paths = [["/etc/xxx/sshd_config", "/etc/xxx/sshd_config"],
+                      ["/etc/xxx_version", "/etc/xxx_version"],
+                      ["/etc/xxx/ssh_config", "/etc/xxx/ssh_config"],
+                      ["/etc/../xxx/config", "/xxx/config"]]
         files: utils.OutputFile = []
         output_path = tempfile.TemporaryDirectory(delete=False)
         for path in test_paths:
             file = utils.create_output_file(output_path.name,
-                                            original_path=path)
+                                            original_path=path[0])
             open(file.path, 'a', encoding="utf-8").close()
             files.append(file)
 
@@ -149,9 +149,17 @@ class Utils(unittest.TestCase):
         for path in test_paths:
             self.assertFileExists(
                 os.path.join(file_tree_root.name,
-                             utils.get_path_without_root(path)))
+                             utils.get_path_without_root(path[1])))
 
         utils.delete_file_tree(file_tree_root)
+
+        # Test path traversal
+        with self.assertRaises(PermissionError):
+            path = "/etc/../../../../ssh/sshd_config"
+            file = utils.create_output_file(output_path.name,
+                                            original_path=path)
+            open(file.path, 'a', encoding="utf-8").close()
+            utils.build_file_tree([file])
 
     def test_delete_file_tree(self):
         """Test delete_file_tree function."""
