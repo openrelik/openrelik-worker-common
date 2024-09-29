@@ -17,14 +17,12 @@ from __future__ import annotations  # support forward looking type hints
 import base64
 import json
 import os
-import shutil
 import subprocess
 import tempfile
 
 from pathlib import Path, PurePath
 from typing import Optional
 from uuid import uuid4
-from typing import Optional
 
 
 def dict_to_b64_string(dict_to_encode: dict) -> str:
@@ -245,5 +243,4 @@ def delete_file_tree(root_path: tempfile.TemporaryDirectory):
     if not isinstance(root_path, tempfile.TemporaryDirectory):
         raise TypeError("Root path is not a TemporaryDirectory object!")
 
-    # shutil.rmtree(root_path.name)
     root_path.cleanup()
