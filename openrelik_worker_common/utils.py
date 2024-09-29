@@ -215,7 +215,6 @@ def build_file_tree(files: list[OutputFile]) -> tempfile.TemporaryDirectory:
     """
     os_tmpdir = tempfile.gettempdir()
     tree_root = tempfile.TemporaryDirectory(delete=False)
-    print(tree_root)
     for file in files:
         normalized_path = os.path.normpath(file.original_path)
         original_filename = Path(normalized_path).name
