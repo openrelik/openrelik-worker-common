@@ -179,7 +179,7 @@ def create_output_file(
         filename: The name of the output file (optional).
         file_extension: The extension of the output file (optional).
         data_type: The data type of the output file (optional).
-        orignal_path: The orignal path of the file (optional).
+        original_path: The orignal path of the file (optional).
         source_file_id: The OutputFile this file belongs to (optional).
 
     Returns:
