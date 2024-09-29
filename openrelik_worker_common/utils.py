@@ -213,14 +213,23 @@ def build_file_tree(files: list[OutputFile]) -> tempfile.TemporaryDirectory:
     Returns:
         The root path of the file tree as a TemporaryDirectory.
     """
+    os_tmpdir = tempfile.gettempdir()
     tree_root = tempfile.TemporaryDirectory(delete=False)
+    print(tree_root)
     for file in files:
-        original_filename = Path(file.original_path).name
-        original_folder = Path(file.original_path).parent
+        normalized_path = os.path.normpath(file.original_path)
+        original_filename = Path(normalized_path).name
+        original_folder = Path(normalized_path).parent
         relative_original_folder = get_path_without_root(original_folder)
         #Create full folder
         try:
-            os.makedirs(os.path.join(tree_root.name, relative_original_folder))
+            tmp_full_path = os.path.join(tree_root.name,
+                                         relative_original_folder)
+            if os_tmpdir not in tmp_full_path:
+                raise PermissionError(
+                    f"Folder {tmp_full_path} not in OS tempdir: {os_tmpdir}")
+
+            os.makedirs(tmp_full_path)
         except FileExistsError:
             pass
         # Create hardlink to file
