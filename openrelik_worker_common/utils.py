@@ -200,6 +200,7 @@ def get_path_without_root(path: str) -> str:
     Returns:
         A relative path without the root.
     """
+    # TODO(hacktobeer) Make this cross-platform
     return str(PurePath(path).relative_to('/'))
 
 
@@ -214,8 +215,8 @@ def build_file_tree(files: list[OutputFile]) -> tempfile.TemporaryDirectory:
     """
     tree_root = tempfile.TemporaryDirectory(delete=False)
     for f in files:
-        original_path_resolved = Path(f.original_path)
-        original_folder = original_path_resolved.parent
+        original_filename = Path(f.original_path).name
+        original_folder = Path(f.original_path).parent
         relative_original_folder = get_path_without_root(original_folder)
         #Create full folder
         try:
@@ -226,7 +227,7 @@ def build_file_tree(files: list[OutputFile]) -> tempfile.TemporaryDirectory:
         os.link(
             f.path,
             os.path.join(tree_root.name, relative_original_folder,
-                         original_path_resolved.name))
+                         original_filename))
 
     return tree_root
 
