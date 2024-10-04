@@ -140,7 +140,7 @@ class Utils(unittest.TestCase):
         files: utils.OutputFile = []
         output_path = tempfile.TemporaryDirectory(delete=False)
         for path in test_paths:
-            file = utils.create_output_file(output_path.name,
+            file = utils.create_output_file(output_path=output_path.name,
                                             original_path=path[0])
             open(file.path, 'a', encoding="utf-8").close()
             files.append(file)
@@ -153,6 +153,12 @@ class Utils(unittest.TestCase):
                              utils.get_path_without_root(path[1])))
 
         utils.delete_file_tree(file_tree_root)
+
+        files = [utils.OutputFile, "not-an-OutputFile"]
+        self.assertIsNone(utils.build_file_tree(files))
+
+        files = []
+        self.assertIsNone(utils.build_file_tree(files))
 
     def test_delete_file_tree(self):
         """Test delete_file_tree function."""
