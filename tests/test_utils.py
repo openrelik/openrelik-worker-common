@@ -145,7 +145,7 @@ class Utils(unittest.TestCase):
             open(file.path, 'a', encoding="utf-8").close()
             files.append(file)
 
-        file_tree_root = utils.build_file_tree(files)
+        file_tree_root = utils.build_file_tree(output_path.name, files)
 
         for path in test_paths:
             self.assertFileExists(
@@ -154,11 +154,13 @@ class Utils(unittest.TestCase):
 
         utils.delete_file_tree(file_tree_root)
 
+        # Test with a non OutputFile instance as files array element
         files = [utils.OutputFile, "not-an-OutputFile"]
-        self.assertIsNone(utils.build_file_tree(files))
+        self.assertIsNone(utils.build_file_tree(output_path, files))
 
+        # Test with an empty files array
         files = []
-        self.assertIsNone(utils.build_file_tree(files))
+        self.assertIsNone(utils.build_file_tree(output_path, files))
 
     def test_delete_file_tree(self):
         """Test delete_file_tree function."""

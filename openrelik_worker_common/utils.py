@@ -126,7 +126,6 @@ class OutputFile:
             source_file_id: The OutputFile this file belongs to (optional).
         """
         self.uuid = uuid4().hex
-        self.output_path = output_path
         self.display_name = self._generate_display_name(
             filename, file_extension)
         self.data_type = data_type
@@ -206,10 +205,12 @@ def get_path_without_root(path: str) -> str:
 
 
 def build_file_tree(
+        output_path: str,
         files: list[OutputFile]) -> tempfile.TemporaryDirectory | None:
     """Creates the original file tree structure from a list of OutputFiles.
 
     Args:
+        output_path: Path to the OpenRelik output directory.
         files: A list of OutPutFile instances.
 
     Returns:
@@ -218,10 +219,7 @@ def build_file_tree(
     if not files or not all(isinstance(file, OutputFile) for file in files):
         return None
 
-    tree_root = os.path.join(files[0].output_path, uuid4().hex)
-    os.makedirs(tree_root)
-    tree_root = tempfile.TemporaryDirectory(dir=tempfile.mkdtemp(
-        dir=tree_root))
+    tree_root = tempfile.TemporaryDirectory(dir=output_path, delete=False)
 
     for file in files:
         normalized_path = os.path.normpath(file.original_path)
@@ -237,7 +235,7 @@ def build_file_tree(
             # directory, preventing attempts to write files outside of it.
             if tree_root.name not in tmp_full_path:
                 raise PermissionError(
-                    f"Folder {tmp_full_path} not in OpenRelik output_path: {file.output_path}"
+                    f"Folder {tmp_full_path} not in OpenRelik output_path: {output_path}"
                 )
 
             os.makedirs(tmp_full_path)
