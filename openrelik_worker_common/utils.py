@@ -226,7 +226,7 @@ def build_file_tree(
         original_filename = Path(normalized_path).name
         original_folder = Path(normalized_path).parent
         relative_original_folder = get_path_without_root(original_folder)
-        #Create full folder
+        # Create complete folder structure.
         try:
             tmp_full_path = os.path.join(tree_root.name,
                                          relative_original_folder)
