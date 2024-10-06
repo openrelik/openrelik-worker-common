@@ -18,9 +18,11 @@ import base64
 import json
 import os
 import subprocess
+import tempfile
 
-from uuid import uuid4
+from pathlib import Path, PurePath
 from typing import Optional
+from uuid import uuid4
 
 
 def dict_to_b64_string(dict_to_encode: dict) -> str:
@@ -187,3 +189,77 @@ def create_output_file(
     """
     return OutputFile(output_path, filename, file_extension, data_type,
                       original_path, source_file_id)
+
+
+def get_path_without_root(path: str) -> str:
+    """Converts a full path to relative path without the root.
+
+    Args:
+        path: A full path.
+
+    Returns:
+        A relative path without the root.
+    """
+    path = PurePath(path)
+    return str(path.relative_to(path.anchor))
+
+
+def build_file_tree(
+        output_path: str,
+        files: list[OutputFile]) -> tempfile.TemporaryDirectory | None:
+    """Creates the original file tree structure from a list of OutputFiles.
+
+    Args:
+        output_path: Path to the OpenRelik output directory.
+        files: A list of OutPutFile instances.
+
+    Returns:
+        The root path of the file tree as a TemporaryDirectory or None.
+    """
+    if not files or not all(isinstance(file, OutputFile) for file in files):
+        return None
+
+    tree_root = tempfile.TemporaryDirectory(dir=output_path, delete=False)
+
+    for file in files:
+        normalized_path = os.path.normpath(file.original_path)
+        original_filename = Path(normalized_path).name
+        original_folder = Path(normalized_path).parent
+        relative_original_folder = get_path_without_root(original_folder)
+        # Create complete folder structure.
+        try:
+            tmp_full_path = os.path.join(tree_root.name,
+                                         relative_original_folder)
+
+            # Ensure that the constructed path is within the system's temporary
+            # directory, preventing attempts to write files outside of it.
+            if tree_root.name not in tmp_full_path:
+                raise PermissionError(
+                    f"Folder {tmp_full_path} not in OpenRelik output_path: {output_path}"
+                )
+
+            os.makedirs(tmp_full_path)
+        except FileExistsError:
+            pass
+        # Create hardlink to file
+        os.link(
+            file.path,
+            os.path.join(tree_root.name, relative_original_folder,
+                         original_filename))
+
+    return tree_root
+
+
+def delete_file_tree(root_path: tempfile.TemporaryDirectory):
+    """Delete a temporary file tree folder structure.
+
+    Args:
+        root_path: TemporaryDirectory root object of file tree structure.
+
+    Returns: None
+    Raises: TypeError
+    """
+    if not isinstance(root_path, tempfile.TemporaryDirectory):
+        raise TypeError("Root path is not a TemporaryDirectory object!")
+
+    root_path.cleanup()
