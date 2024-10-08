@@ -123,7 +123,11 @@ class OutputFile:
         self.uuid = uuid4().hex
         self.display_name = filename if filename else self.uuid
         self.data_type = data_type
-        self.path = os.path.join(output_path, self.uuid)
+        _, output_extension = os.path.splitext(self.display_name)
+        output_filename = self.uuid
+        if output_extension:
+            output_filename = f"{self.uuid}{output_extension}"
+        self.path = os.path.join(output_path, output_filename)
         self.original_path = original_path
         self.source_file_id = source_file_id
 
