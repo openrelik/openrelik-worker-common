@@ -122,7 +122,6 @@ class Utils(unittest.TestCase):
         )
         result = outputfile.to_dict()
         expected = {
-            "filename": "123456789",
             "display_name": "123456789",
             "data_type": "openrelik:worker:file:generic",
             "uuid": "123456789",
