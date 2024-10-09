@@ -62,17 +62,15 @@ def get_input_files(pipe_result: str, input_files: list) -> list:
         The input files for the task.
     """
     if pipe_result:
-        result_string = base64.b64decode(
-            pipe_result.encode("utf-8")).decode("utf-8")
+        result_string = base64.b64decode(pipe_result.encode("utf-8")).decode("utf-8")
         result_dict = json.loads(result_string)
         input_files = result_dict.get("output_files")
     return input_files
 
 
-def task_result(output_files: list,
-                workflow_id: str,
-                command: str,
-                meta: dict = None) -> str:
+def task_result(
+    output_files: list, workflow_id: str, command: str, meta: dict = None
+) -> str:
     """Create a task result dictionary and encode it to a base64 string.
 
     Args:
@@ -99,10 +97,8 @@ class OutputFile:
     Attributes:
         uuid: Unique identifier for the file.
         display_name: Display name for the file.
-        file_extension: File extension for the file.
-        filename: Filename for the file.
+        data_type: Data type of the file.
         path: The full path to the file.
-        output_path: The path to the output directory.
         original_path: The full original path to the file.
         source_file_id: The OutputFile this file belongs to.
     """
@@ -111,7 +107,6 @@ class OutputFile:
         self,
         output_path: str,
         filename: Optional[str] = None,
-        file_extension: Optional[str] = None,
         data_type: Optional[str] = None,
         original_path: Optional[str] = None,
         source_file_id: Optional[OutputFile] = None,
@@ -120,43 +115,31 @@ class OutputFile:
 
         Args:
             output_path: The path to the output directory.
-            filename: The name of the output file (optional).
-            file_extension: The extension of the output file (optional).
+            filename: The name of the output file (optional, UUID if missing).
+            data_type: The data type of the output file (optional).
             orignal_path: The orignal path of the file (optional).
             source_file_id: The OutputFile this file belongs to (optional).
         """
         self.uuid = uuid4().hex
-        self.display_name = self._generate_display_name(
-            filename, file_extension)
+        self.display_name = filename if filename else self.uuid
         self.data_type = data_type
-        self.filename = self.uuid
-        self.path = os.path.join(output_path, self.filename)
+        _, output_extension = os.path.splitext(self.display_name)
+        output_filename = self.uuid
+        if output_extension:
+            output_filename = f"{self.uuid}{output_extension}"
+        self.path = os.path.join(output_path, output_filename)
         self.original_path = original_path
         self.source_file_id = source_file_id
 
-    def _generate_display_name(self,
-                               filename: str = None,
-                               file_extension: str = None) -> str:
-        """Generate the display name for the output file.
-
-        Args:
-            filename: The name of the input file (optional).
-            file_extension: The extension of the output file (optional).
-
-        Returns:
-            The display name for the output file.
-        """
-        base_name = filename if filename else self.uuid
-        return f"{base_name}.{file_extension}" if file_extension else base_name
-
     def to_dict(self):
-        """Return a dictionary representation of the OutputFile object.
+        """
+        Return a dictionary representation of the OutputFile object.
+        This is what the mediator server gets and uses to create a File in the database.
 
         Returns:
             A dictionary containing the attributes of the OutputFile object.
         """
         return {
-            "filename": self.filename,
             "display_name": self.display_name,
             "data_type": self.data_type,
             "uuid": self.uuid,
@@ -169,7 +152,6 @@ class OutputFile:
 def create_output_file(
     output_path: str,
     filename: Optional[str] = None,
-    file_extension: Optional[str] = None,
     data_type: Optional[str] = "openrelik:worker:file:generic",
     original_path: Optional[str] = None,
     source_file_id: Optional[OutputFile] = None,
@@ -179,7 +161,6 @@ def create_output_file(
     Args:
         output_path: The path to the output directory.
         filename: The name of the output file (optional).
-        file_extension: The extension of the output file (optional).
         data_type: The data type of the output file (optional).
         original_path: The orignal path of the file (optional).
         source_file_id: The OutputFile this file belongs to (optional).
@@ -187,8 +168,7 @@ def create_output_file(
     Returns:
         An OutputFile object.
     """
-    return OutputFile(output_path, filename, file_extension, data_type,
-                      original_path, source_file_id)
+    return OutputFile(output_path, filename, data_type, original_path, source_file_id)
 
 
 def get_path_without_root(path: str) -> str:
@@ -205,8 +185,8 @@ def get_path_without_root(path: str) -> str:
 
 
 def build_file_tree(
-        output_path: str,
-        files: list[OutputFile]) -> tempfile.TemporaryDirectory | None:
+    output_path: str, files: list[OutputFile]
+) -> tempfile.TemporaryDirectory | None:
     """Creates the original file tree structure from a list of OutputFiles.
 
     Args:
@@ -228,8 +208,7 @@ def build_file_tree(
         relative_original_folder = get_path_without_root(original_folder)
         # Create complete folder structure.
         try:
-            tmp_full_path = os.path.join(tree_root.name,
-                                         relative_original_folder)
+            tmp_full_path = os.path.join(tree_root.name, relative_original_folder)
 
             # Ensure that the constructed path is within the system's temporary
             # directory, preventing attempts to write files outside of it.
@@ -244,8 +223,8 @@ def build_file_tree(
         # Create hardlink to file
         os.link(
             file.path,
-            os.path.join(tree_root.name, relative_original_folder,
-                         original_filename))
+            os.path.join(tree_root.name, relative_original_folder, original_filename),
+        )
 
     return tree_root
 
