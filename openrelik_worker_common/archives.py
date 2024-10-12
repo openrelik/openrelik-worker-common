@@ -18,7 +18,7 @@ import time
 from uuid import uuid4
 
 
-def unpack(input_path: str, output_folder: str, log_file: str) -> str:
+def extract_7zip(input_path: str, output_folder: str, log_file: str) -> str:
     """Unpacks an archive with 7zip.
 
     Args:
@@ -41,10 +41,9 @@ def unpack(input_path: str, output_folder: str, log_file: str) -> str:
     ]
 
     command_string = " ".join(command)
-    print(f"command: {command}")
     with open(log_file, "wb") as out:
-        process = subprocess.Popen(command, stdout=out, stderr=out)
-        while process.poll() is None:
-            time.sleep(2)
+        ret = subprocess.call(command, stdout=out, stderr=out)
+    if ret != 0:
+        raise RuntimeError("7zip execution error.")
 
     return (command_string, export_folder)
