@@ -88,7 +88,6 @@ class Utils(unittest.TestCase):
         result = utils.create_output_file(output_base_path="output_path/")
         self.assertEqual(result.display_name, "123456789")
         self.assertEqual(result.path, "output_path/123456789")
-        self.assertEqual(result.data_type, "openrelik:worker:file:generic")
 
         # Test with an extra file_name.
         result = utils.create_output_file(
@@ -123,9 +122,10 @@ class Utils(unittest.TestCase):
         )
         result = outputfile.to_dict()
         expected = {
-            "display_name": "123456789",
-            "data_type": "openrelik:worker:file:generic",
             "uuid": "123456789",
+            "display_name": "123456789",
+            "data_type": None,
+            "extension": None,
             "path": "output_path/123456789",
             "original_path": None,
             "source_file_id": parent_outputfile,
