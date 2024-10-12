@@ -13,8 +13,8 @@
 # limitations under the License.
 """Helper methods for archives."""
 import os
+import shutil
 import subprocess
-import time
 from uuid import uuid4
 
 
@@ -30,6 +30,9 @@ def extract_7zip(input_path: str, output_folder: str, log_file: str) -> str:
       command(string): The executed command string.
       export_folder: Root folder path to the unpacked archive.
     """
+    if not shutil.which("7z"):
+        raise RuntimeError("7z executable not found!")
+    
     export_folder = os.path.join(output_folder, uuid4().hex)
     os.mkdir(export_folder)
 
