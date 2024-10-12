@@ -85,28 +85,28 @@ class Utils(unittest.TestCase):
         mock_uuid.return_value = h
 
         # Test with only an output_path.
-        result = utils.create_output_file(output_path="output_path/")
+        result = utils.create_output_file(output_base_path="output_path/")
         self.assertEqual(result.display_name, "123456789")
         self.assertEqual(result.path, "output_path/123456789")
         self.assertEqual(result.data_type, "openrelik:worker:file:generic")
 
         # Test with an extra file_name.
         result = utils.create_output_file(
-            output_path="output_path/", filename="test.txt"
+            output_base_path="output_path/", display_name="test.txt"
         )
         self.assertEqual(result.display_name, "test.txt")
 
         # Test with an extra file_extension.
         result = utils.create_output_file(
-            output_path="output_path/", filename="test.txt"
+            output_base_path="output_path/", display_name="test.txt"
         )
         self.assertEqual(result.display_name, "test.txt")
         self.assertEqual(result.path, "output_path/123456789.txt")
 
         # Test with an extra source_file_id OutputFile instance.
-        source_file_id = utils.create_output_file(output_path="output_path/")
+        source_file_id = utils.create_output_file(output_base_path="output_path/")
         result = utils.create_output_file(
-            output_path="output_path/", source_file_id=source_file_id
+            output_base_path="output_path/", source_file_id=source_file_id
         )
         self.assertEqual(result.source_file_id.uuid, source_file_id.uuid)
 
@@ -117,9 +117,9 @@ class Utils(unittest.TestCase):
         uuid.hex = "123456789"
         mock_uuid.return_value = uuid
 
-        parent_outputfile = utils.create_output_file(output_path="output_path/")
+        parent_outputfile = utils.create_output_file(output_base_path="output_path/")
         outputfile = utils.create_output_file(
-            output_path="output_path/", source_file_id=parent_outputfile
+            output_base_path="output_path/", source_file_id=parent_outputfile
         )
         result = outputfile.to_dict()
         expected = {
@@ -145,7 +145,7 @@ class Utils(unittest.TestCase):
         output_path = tempfile.TemporaryDirectory(delete=False)
         for path in test_paths:
             file = utils.create_output_file(
-                output_path=output_path.name, original_path=path[0]
+                output_base_path=output_path.name, original_path=path[0]
             )
             open(file.path, "a", encoding="utf-8").close()
             files.append(file)
