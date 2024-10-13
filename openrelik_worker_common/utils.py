@@ -182,7 +182,7 @@ def create_output_file(
     # Allow for an explicit extension to be set.
     if extension:
         extension = extension.lstrip(".")
-        display_name = f"{display_name}{extension}"
+        display_name = f"{display_name}.{extension}"
 
     # Extract extension from filename if present
     _, extracted_extension = os.path.splitext(display_name)
