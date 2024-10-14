@@ -97,6 +97,7 @@ class OutputFile:
     Attributes:
         uuid: Unique identifier for the file.
         display_name: Display name for the file.
+        extension: Extension of the file.
         data_type: Data type of the file.
         path: The full path to the file.
         original_path: The full original path to the file.
@@ -105,9 +106,10 @@ class OutputFile:
 
     def __init__(
         self,
+        uuid: str,
         output_path: str,
-        filename: Optional[str] = None,
-        add_extension: Optional[str] = None,
+        display_name: str,
+        extension: Optional[str] = None,
         data_type: Optional[str] = None,
         original_path: Optional[str] = None,
         source_file_id: Optional[OutputFile] = None,
@@ -115,46 +117,20 @@ class OutputFile:
         """Initialize an OutputFile object.
 
         Args:
+            uuid: Unique identifier (uuid4) for the file.
             output_path: The path to the output directory.
-            filename: The name of the output file (optional, UUID if missing).
-            add_extension: Add an extension to the output file (optional).
+            display_name: The name of the output file.
+            extension: File extension (optional).
             data_type: The data type of the output file (optional).
             orignal_path: The orignal path of the file (optional).
             source_file_id: The OutputFile this file belongs to (optional).
         """
-        # Generate a unique identifier for the file
-        self.uuid = uuid4().hex
-
-        # Determine the display name for the file. If no filename is given, use the
-        # file's UUID. If a filename is provided with an extension, the extension will
-        # be preserved.
-        self.display_name = filename if filename else self.uuid
-
-        # Allow for an explicit extension to be set. This is useful for files without a
-        # filename (using UUID) but where a specific extension is desired for storage
-        # and display.
-        # Note: If a filename with an extension is provided, this explicit extension
-        # will be appended to the existing one.
-        if add_extension:
-            self.display_name = f"{self.display_name}.{add_extension.lstrip('.')}"
-
-        # Store the data type of the file
+        self.uuid = uuid
+        self.display_name = display_name
+        self.extension = extension
         self.data_type = data_type
-
-        # Construct the filename for storage
-        output_filename = self.uuid
-        _, extension_from_display_name = os.path.splitext(self.display_name)
-        if extension_from_display_name:
-            # If the display name has an extension, append it to the UUID filename
-            output_filename = f"{self.uuid}{extension_from_display_name}"
-
-        # Construct the full output path
-        self.path = os.path.join(output_path, output_filename)
-
-        # Store the original path of the file (if provided)
+        self.path = output_path
         self.original_path = original_path
-
-        # Store the source file ID (if provided)
         self.source_file_id = source_file_id
 
     def to_dict(self):
@@ -166,9 +142,10 @@ class OutputFile:
             A dictionary containing the attributes of the OutputFile object.
         """
         return {
-            "display_name": self.display_name,
-            "data_type": self.data_type,
             "uuid": self.uuid,
+            "display_name": self.display_name,
+            "extension": self.extension,
+            "data_type": self.data_type,
             "path": self.path,
             "original_path": self.original_path,
             "source_file_id": self.source_file_id,
@@ -176,38 +153,49 @@ class OutputFile:
 
 
 def create_output_file(
-    output_path: str,
-    filename: Optional[str] = None,
-    uuid_as_filename: Optional[bool] = False,
-    add_extension: Optional[str] = None,
-    data_type: Optional[str] = "openrelik:worker:file:generic",
+    output_base_path: str,
+    display_name: Optional[str] = None,
+    extension: Optional[str] = None,
+    data_type: Optional[str] = None,
     original_path: Optional[str] = None,
     source_file_id: Optional[OutputFile] = None,
 ) -> OutputFile:
     """Creates and returns an OutputFile object.
 
     Args:
-        output_path: The path to the output directory.
-        filename: The name of the output file (optional).
-        uuid_as_filename: Use UUID as filename (optional).
-        add_extension: File extension (optional).
+        output_base_path: The path to the output directory.
+        display_name: The name of the output file (optional).
+        extension: File extension (optional).
         data_type: The data type of the output file (optional).
         original_path: The orignal path of the file (optional).
         source_file_id: The OutputFile this file belongs to (optional).
 
     Returns:
         An OutputFile object.
-
-        Raises:
-            ValueError: If both filename and uuid_as_filename arguments are provided.
     """
-    if filename and uuid_as_filename:
-        raise ValueError("Cannot provide both filename and uuid_as_filename arguments.")
+    # Create a new UUID for the file to use as filename on disk.
+    uuid = uuid4().hex
+
+    # If display_name is missing, set the file's UUID as display_name.
+    display_name = display_name if display_name else uuid
+
+    # Allow for an explicit extension to be set.
+    if extension:
+        extension = extension.lstrip(".")
+        display_name = f"{display_name}.{extension}"
+
+    # Extract extension from filename if present
+    _, extracted_extension = os.path.splitext(display_name)
+
+    # Construct the full output path.
+    output_filename = f"{uuid}{extracted_extension}"
+    output_path = os.path.join(output_base_path, output_filename)
 
     return OutputFile(
+        uuid,
         output_path,
-        filename,
-        add_extension,
+        display_name,
+        extension,
         data_type,
         original_path,
         source_file_id,
