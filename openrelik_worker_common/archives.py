@@ -39,7 +39,7 @@ def extract_archive(input_file: dict, output_folder: str, log_file: str) -> str:
     export_folder = os.path.join(output_folder, uuid4().hex)
     os.mkdir(export_folder)
 
-    if input_filename.endswith((".tgz", "tar.gz")):
+    if input_filename.endswith((".tgz", ".tar.gz")):
         command = [
             "tar",
             "-vxzf",
