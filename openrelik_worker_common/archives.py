@@ -22,7 +22,7 @@ def extract_archive(input_file: dict, output_folder: str, log_file: str) -> str:
     """Unpacks an archive.
 
     Args:
-      input_file(Dict): Input file dict.
+      input_file(dict): Input file dict.
       output_folder(string): OpenRelik output_folder.
       log_file(string): Log file path.
 
