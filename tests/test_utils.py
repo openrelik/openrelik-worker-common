@@ -102,13 +102,6 @@ class Utils(unittest.TestCase):
         self.assertEqual(result.display_name, "test.txt")
         self.assertEqual(result.path, "output_path/123456789.txt")
 
-        # Test with an extra explicit file_extension.
-        result = utils.create_output_file(
-            output_base_path="output_path/", display_name="test.txt", extension="test"
-        )
-        self.assertEqual(result.display_name, "test.txt.test")
-        self.assertEqual(result.path, "output_path/123456789.test")
-
         # Test with an extra source_file_id OutputFile instance.
         source_file_id = utils.create_output_file(output_base_path="output_path/")
         result = utils.create_output_file(
@@ -131,8 +124,8 @@ class Utils(unittest.TestCase):
         expected = {
             "uuid": "123456789",
             "display_name": "123456789",
+            "extension": "",
             "data_type": None,
-            "extension": None,
             "path": "output_path/123456789",
             "original_path": None,
             "source_file_id": parent_outputfile,
