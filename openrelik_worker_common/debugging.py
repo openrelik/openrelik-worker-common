@@ -17,10 +17,15 @@ import os
 def setup_debugging(port: int = 5678):
     """Setup the Python Debugger.
 
-    Args:
-        port: The port to listen on. default 5678
+    This function initializes the debugpy library, allowing you to attach a debugger to your Python process.
+    It checks for the environment variable `OPENRELIK_PYDEBUG` to determine if debugging should be enabled.
+    If enabled, it also checks for the `OPENRELIK_PYDEBUG_PORT` environment variable to specify a custom port.
 
-    Returns: None.
+    Args:
+        port: The port to listen on. Defaults to 5678.
+
+    Returns:
+        None.
     """
     import debugpy
 

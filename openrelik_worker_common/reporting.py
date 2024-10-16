@@ -35,7 +35,7 @@ class MarkdownDocument:
         self.sections: list[MarkdownDocumentSection] = []
         self.fmt = MarkdownFormatter()
 
-    def add_section(self, title=None):
+    def add_section(self):
         """Adds a new section to the document.
 
         Args:

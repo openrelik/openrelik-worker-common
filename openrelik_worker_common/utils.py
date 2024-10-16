@@ -192,13 +192,13 @@ def create_output_file(
     output_path = os.path.join(output_base_path, output_filename)
 
     return OutputFile(
-        uuid,
-        output_path,
-        display_name,
-        extension,
-        data_type,
-        original_path,
-        source_file_id,
+        uuid=uuid,
+        output_path=output_path,
+        display_name=display_name,
+        extension=extracted_extension,
+        data_type=data_type,
+        original_path=original_path,
+        source_file_id=source_file_id,
     )
 
 
