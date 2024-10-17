@@ -18,11 +18,11 @@ import subprocess
 from uuid import uuid4
 
 
-def extract_7zip(input_path: str, output_folder: str, log_file: str) -> str:
-    """Unpacks an archive with 7zip.
+def extract_archive(input_file: dict, output_folder: str, log_file: str) -> str:
+    """Unpacks an archive.
 
     Args:
-      input_path(string): Input archive path.
+      input_file(dict): Input file dict.
       output_folder(string): OpenRelik output_folder.
       log_file(string): Log file path.
 
@@ -30,23 +30,35 @@ def extract_7zip(input_path: str, output_folder: str, log_file: str) -> str:
       command(string): The executed command string.
       export_folder: Root folder path to the unpacked archive.
     """
+    input_path = input_file.get("path")
+    input_filename = input_file.get("display_name")
+
     if not shutil.which("7z"):
         raise RuntimeError("7z executable not found!")
-    
+
     export_folder = os.path.join(output_folder, uuid4().hex)
     os.mkdir(export_folder)
 
-    command = [
-        "7z",
-        "x",
-        input_path,
-        f"-o{export_folder}",
-    ]
+    if input_filename.endswith((".tgz", ".tar.gz")):
+        command = [
+            "tar",
+            "-vxzf",
+            input_path,
+            "-C",
+            f"{export_folder}",
+        ]
+    else:
+        command = [
+            "7z",
+            "x",
+            input_path,
+            f"-o{export_folder}",
+        ]
 
     command_string = " ".join(command)
     with open(log_file, "wb") as out:
         ret = subprocess.call(command, stdout=out, stderr=out)
     if ret != 0:
-        raise RuntimeError("7zip execution error.")
+        raise RuntimeError("7zip or tar execution error.")
 
     return (command_string, export_folder)
