@@ -65,6 +65,8 @@ class Utils(unittest.TestCase):
             "workflow_id": workflow_id,
             "command": command,
             "meta": meta,
+            "file_reports": [],
+            "task_report": None,
         }
 
         result = utils.task_result(
@@ -72,6 +74,8 @@ class Utils(unittest.TestCase):
             workflow_id=workflow_id,
             command=command,
             meta=meta,
+            file_reports=[],
+            task_report=None,
         )
         self.assertEqual(result, utils.dict_to_b64_string(expected))
 
