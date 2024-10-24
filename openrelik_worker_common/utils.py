@@ -15,11 +15,11 @@
 from __future__ import annotations  # support forward looking type hints
 
 import base64
+import fnmatch
 import json
 import os
 import subprocess
 import tempfile
-
 from pathlib import Path, PurePath
 from typing import Optional
 from uuid import uuid4
@@ -51,7 +51,7 @@ def count_lines_in_file(file_path):
     return int(wc.decode("utf-8").split()[0])
 
 
-def get_input_files(pipe_result: str, input_files: list) -> list:
+def get_input_files(pipe_result: str, input_files: list, filter: dict = None) -> list:
     """Set the input files for the task.
 
     Args:
@@ -65,11 +65,20 @@ def get_input_files(pipe_result: str, input_files: list) -> list:
         result_string = base64.b64decode(pipe_result.encode("utf-8")).decode("utf-8")
         result_dict = json.loads(result_string)
         input_files = result_dict.get("output_files")
+
+    if filter:
+        input_files = filter_compatible_files(input_files, filter)
+
     return input_files
 
 
 def task_result(
-    output_files: list, workflow_id: str, command: str, meta: dict = None
+    output_files: list,
+    workflow_id: str,
+    command: str = None,
+    meta: dict = None,
+    file_reports: list = [],
+    task_report: dict = None,
 ) -> str:
     """Create a task result dictionary and encode it to a base64 string.
 
@@ -78,6 +87,8 @@ def task_result(
         workflow_id: ID of the workflow.
         command: The command used to execute the task.
         meta: Additional metadata for the task (optional).
+        file_reports: List of file report dictionaries.
+        task_report: A dictionary representing a task report.
 
     Returns:
         Base64-encoded string representing the task result.
@@ -87,8 +98,29 @@ def task_result(
         "workflow_id": workflow_id,
         "command": command,
         "meta": meta,
+        "file_reports": file_reports,
+        "task_report": task_report,
     }
     return dict_to_b64_string(result)
+
+
+def create_file_report(
+    input_file: dict,
+    report_file: OutputFile,
+    report: object,
+) -> str:
+    """Create a file report dictionary.
+
+    Args:
+
+    Returns:
+    """
+    return {
+        "summary": report.summary,
+        "priority": report.priority,
+        "input_file_uuid": input_file.get("uuid"),
+        "content_file_uuid": report_file.uuid,
+    }
 
 
 class OutputFile:
@@ -273,3 +305,37 @@ def delete_file_tree(root_path: tempfile.TemporaryDirectory):
         raise TypeError("Root path is not a TemporaryDirectory object!")
 
     root_path.cleanup()
+
+
+def filter_compatible_files(input_files, filter_dict):
+    """
+    Filters a list of files based on compatibility with a given filter,
+    including partial matching.
+
+    Args:
+      input_files: A list of file dictionaries, each containing keys
+                   "data_type", "mime-type", "filename", and "extension".
+      filter_dict: A dictionary specifying the filter criteria with keys
+                   "data_types", "mime-types", and "extensions".
+
+    Returns:
+      A list of compatible file dictionaries.
+    """
+    compatible_files = []
+    for file_data in input_files:
+        if file_data.get("data_type") is not None and any(
+            fnmatch.fnmatch(file_data["data_type"], pattern)
+            for pattern in filter_dict["data_types"]
+        ):
+            compatible_files.append(file_data)
+        elif file_data.get("mime_type") is not None and any(
+            fnmatch.fnmatch(file_data["mime_type"], pattern)
+            for pattern in filter_dict["mime_types"]
+        ):
+            compatible_files.append(file_data)
+        elif file_data.get("display_name") is not None and any(
+            fnmatch.fnmatch(file_data["display_name"], pattern)
+            for pattern in filter_dict["filenames"]
+        ):
+            compatible_files.append(file_data)
+    return compatible_files
