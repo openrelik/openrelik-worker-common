@@ -176,7 +176,7 @@ class MarkdownDocumentSection:
         return markdown_text
 
 
-class TaskReport(MarkdownDocument):
+class Report(MarkdownDocument):
     """A class to represent a task report, inheriting from MarkdownDocument.
 
     Attributes:
@@ -219,14 +219,15 @@ class TaskReport(MarkdownDocument):
 class Priority(IntEnum):
     """Reporting priority enum to store common values.
 
-    Priorities can be anything in the range of 0-100, where 0 is the highest
+    Priorities can be anything in the range of 0-100, where 100 is the highest
     priority.
     """
 
-    LOW = 80
-    MEDIUM = 50
-    HIGH = 20
-    CRITICAL = 10
+    CRITICAL = 80
+    HIGH = 40
+    MEDIUM = 20
+    LOW = 10
+    INFO = 5
 
 
 class MarkdownFormatter:
