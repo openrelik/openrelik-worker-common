@@ -12,115 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations  # support forward looking type hints
-
-import base64
-import fnmatch
-import json
 import os
 import subprocess
 import tempfile
 from pathlib import Path, PurePath
 from typing import Optional
 from uuid import uuid4
-
-
-def dict_to_b64_string(dict_to_encode: dict) -> str:
-    """Encode a dictionary to a base64-encoded string.
-
-    Args:
-        dict_to_encode: The dictionary to encode.
-
-    Returns:
-        The base64-encoded string.
-    """
-    json_string = json.dumps(dict_to_encode)
-    return base64.b64encode(json_string.encode("utf-8")).decode("utf-8")
-
-
-def count_lines_in_file(file_path):
-    """Count the number of lines in a file.
-
-    Args:
-        file_path: The path to the file.
-
-    Returns:
-        The number of lines in the file.
-    """
-    wc = subprocess.check_output(["wc", "-l", file_path])
-    return int(wc.decode("utf-8").split()[0])
-
-
-def get_input_files(pipe_result: str, input_files: list, filter: dict = None) -> list:
-    """Set the input files for the task.
-
-    Args:
-        pipe_result: The result of the previous task (from Celery).
-        input_files: The input files for the task.
-
-    Returns:
-        The input files for the task.
-    """
-    if pipe_result:
-        result_string = base64.b64decode(pipe_result.encode("utf-8")).decode("utf-8")
-        result_dict = json.loads(result_string)
-        input_files = result_dict.get("output_files")
-
-    if filter:
-        input_files = filter_compatible_files(input_files, filter)
-
-    return input_files
-
-
-def task_result(
-    output_files: list,
-    workflow_id: str,
-    command: str = None,
-    meta: dict = None,
-    file_reports: list = [],
-    task_report: dict = None,
-) -> str:
-    """Create a task result dictionary and encode it to a base64 string.
-
-    Args:
-        output_files: List of output file dictionaries.
-        workflow_id: ID of the workflow.
-        command: The command used to execute the task.
-        meta: Additional metadata for the task (optional).
-        file_reports: List of file report dictionaries.
-        task_report: A dictionary representing a task report.
-
-    Returns:
-        Base64-encoded string representing the task result.
-    """
-    result = {
-        "output_files": output_files,
-        "workflow_id": workflow_id,
-        "command": command,
-        "meta": meta,
-        "file_reports": file_reports,
-        "task_report": task_report,
-    }
-    return dict_to_b64_string(result)
-
-
-def create_file_report(
-    input_file: dict,
-    report_file: OutputFile,
-    report: object,
-) -> str:
-    """Create a file report dictionary.
-
-    Args:
-
-    Returns:
-    """
-    return {
-        "summary": report.summary,
-        "priority": report.priority,
-        "input_file_uuid": input_file.get("uuid"),
-        "content_file_uuid": report_file.uuid,
-    }
 
 
 class OutputFile:
@@ -144,7 +41,7 @@ class OutputFile:
         extension: Optional[str] = None,
         data_type: Optional[str] = None,
         original_path: Optional[str] = None,
-        source_file_id: Optional[OutputFile] = None,
+        source_file_id: Optional[int] = None,
     ):
         """Initialize an OutputFile object.
 
@@ -234,7 +131,20 @@ def create_output_file(
     )
 
 
-def get_path_without_root(path: str) -> str:
+def count_file_lines(file_path):
+    """Count the number of lines in a file.
+
+    Args:
+        file_path: The path to the file.
+
+    Returns:
+        The number of lines in the file.
+    """
+    wc = subprocess.check_output(["wc", "-l", file_path])
+    return int(wc.decode("utf-8").split()[0])
+
+
+def get_relative_path(path: str) -> str:
     """Converts a full path to relative path without the root.
 
     Args:
@@ -268,7 +178,7 @@ def build_file_tree(
         normalized_path = os.path.normpath(file.original_path)
         original_filename = Path(normalized_path).name
         original_folder = Path(normalized_path).parent
-        relative_original_folder = get_path_without_root(original_folder)
+        relative_original_folder = get_relative_path(original_folder)
         # Create complete folder structure.
         try:
             tmp_full_path = os.path.join(tree_root.name, relative_original_folder)
@@ -305,37 +215,3 @@ def delete_file_tree(root_path: tempfile.TemporaryDirectory):
         raise TypeError("Root path is not a TemporaryDirectory object!")
 
     root_path.cleanup()
-
-
-def filter_compatible_files(input_files, filter_dict):
-    """
-    Filters a list of files based on compatibility with a given filter,
-    including partial matching.
-
-    Args:
-      input_files: A list of file dictionaries, each containing keys
-                   "data_type", "mime-type", "filename", and "extension".
-      filter_dict: A dictionary specifying the filter criteria with keys
-                   "data_types", "mime-types", and "extensions".
-
-    Returns:
-      A list of compatible file dictionaries.
-    """
-    compatible_files = []
-    for file_data in input_files:
-        if file_data.get("data_type") is not None and any(
-            fnmatch.fnmatch(file_data["data_type"], pattern)
-            for pattern in filter_dict["data_types"]
-        ):
-            compatible_files.append(file_data)
-        elif file_data.get("mime_type") is not None and any(
-            fnmatch.fnmatch(file_data["mime_type"], pattern)
-            for pattern in filter_dict["mime_types"]
-        ):
-            compatible_files.append(file_data)
-        elif file_data.get("display_name") is not None and any(
-            fnmatch.fnmatch(file_data["display_name"], pattern)
-            for pattern in filter_dict["filenames"]
-        ):
-            compatible_files.append(file_data)
-    return compatible_files
