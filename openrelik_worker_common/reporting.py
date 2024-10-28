@@ -16,6 +16,8 @@
 import json
 from enum import IntEnum
 
+from .file_utils import OutputFile
+
 
 class MarkdownDocument:
     """A class to represent a Markdown document.
@@ -366,3 +368,26 @@ class MarkdownTable:
         for row in self.rows:
             markdown_text += "|" + "|".join(row) + "|\n"
         return markdown_text
+
+
+def serialize_file_report(
+    input_file: dict,
+    report_file: OutputFile,
+    report: object,
+) -> dict:
+    """Serializes a file report into a dictionary for use in a task result.
+
+    Args:
+        input_file: The input file dictionary.
+        report_file: The OutputFile object representing the report file.
+        report: The report object containing summary and priority information.
+
+    Returns:
+        A dictionary representing the serialized file report.
+    """
+    return {
+        "summary": report.summary,
+        "priority": report.priority,
+        "input_file_uuid": input_file.get("uuid"),
+        "content_file_uuid": report_file.uuid,
+    }
