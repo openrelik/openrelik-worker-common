@@ -63,3 +63,28 @@ def extract_archive(input_file: dict, output_folder: str, log_file: str) -> str:
         raise RuntimeError("7zip or tar execution error.")
 
     return (command_string, export_folder)
+
+import shutil
+import os
+
+def create_archive(input_folder_path: str, archive_path: str, delete_input: bool = False):
+    """
+    Zips the contents of a folder into a .zip archive and (optionally) deletes the original folder.
+
+    Args:
+        input_folder_path (str): Path to the folder to be zipped.
+        archive_path (str): Path (including filename) where the zip file will be saved.
+        delete_input (boolean): True if content in folder_path needs to be deleted after archive creation.
+    
+    Returns:
+        str: Path to the created zip file.
+    """
+    if not os.path.isdir(input_folder_path):
+        raise ValueError(f"The folder {input_folder_path} does not exist.")
+    
+    zip_file = shutil.make_archive(archive_path, 'zip', input_folder_path)
+    
+    if delete_input:
+        shutil.rmtree(input_folder_path)
+    
+    return zip_file
