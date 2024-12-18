@@ -104,18 +104,18 @@ def filter_compatible_files(input_files, filter_dict):
     compatible_files = []
     for file_data in input_files:
         if file_data.get("data_type") is not None and any(
-            fnmatch.fnmatch(file_data["data_type"], pattern)
-            for pattern in filter_dict["data_types"]
+            fnmatch.fnmatch(file_data.get("data_type"), pattern)
+            for pattern in filter_dict.get("data_types")
         ):
             compatible_files.append(file_data)
         elif file_data.get("mime_type") is not None and any(
-            fnmatch.fnmatch(file_data["mime_type"], pattern)
-            for pattern in filter_dict["mime_types"]
+            fnmatch.fnmatch(file_data.get("mime_type"), pattern)
+            for pattern in filter_dict.get("mime_types")
         ):
             compatible_files.append(file_data)
         elif file_data.get("display_name") is not None and any(
-            fnmatch.fnmatch(file_data["display_name"], pattern)
-            for pattern in filter_dict["filenames"]
+            fnmatch.fnmatch(file_data.get("display_name"), pattern)
+            for pattern in filter_dict.get("filenames")
         ):
             compatible_files.append(file_data)
     return compatible_files
