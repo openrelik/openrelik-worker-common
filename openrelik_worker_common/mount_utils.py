@@ -25,6 +25,7 @@ class BlockDevice:
         self.blkdeviceinfo = None
         self.partitions = []
         self.mountpoints = []
+        self.mountroot = "/mnt"
 
         # Setup the loop device
         self._losetup()
@@ -44,26 +45,7 @@ class BlockDevice:
         if process.returncode == 0:
             self.blkdevice = process.stdout.strip()
         else:
-            raise RuntimeError(
-                f"Error: no partitions found or other losetup error: {process.stderr}"
-            )
-
-        return None
-
-    def destroy(self):
-        self.umount()
-
-        losetup_command = ["losetup", "--detach", self.blkdevice]
-        process = subprocess.run(
-            losetup_command, capture_output=True, check=False, text=True
-        )
-        if process.returncode == 0:
-            print(f"Detached {self.blkdevice} succes!")
-            self.blkdevice = process.stdout.strip()
-        else:
-            raise RuntimeError(
-                f"Error losetup detach: {process.stderr} {process.stdout}"
-            )
+            raise RuntimeError(f"Error: {process.stderr} {process.stdout}")
 
         return None
 
@@ -76,17 +58,13 @@ class BlockDevice:
         if process.returncode == 0:
             self.blkdeviceinfo = json.loads(process.stdout.strip())
         else:
-            raise RuntimeError(
-                f"Error: no partitions found or other lsblk error: {process.stderr} {process.stdout}"
-            )
+            raise RuntimeError(f"Error lsblk:  {process.stderr} {process.stdout}")
 
         return None
 
     def _parse_partitions(self):
         bd = self.blkdeviceinfo.get("blockdevices")[0]
         if "children" not in bd:
-            # TODO(hacktobeer): make this a log instead of print.
-            print("No partitions found")
             return
         for children in bd.get("children"):
             self.partitions.append(f"/dev/{children["name"]}")
@@ -124,7 +102,7 @@ class BlockDevice:
 
         for mounttarget in to_mount:
             print(f"Trying to mount {mounttarget}")
-            mount_command = ["mount"]
+            mount_command = ["sudo", "mount"]
             fstype = self._get_fstype(mounttarget)
             if fstype == "xfs":
                 mount_command.extend(["-o", "ro,norecover"])
@@ -135,8 +113,8 @@ class BlockDevice:
 
             mount_command.append(mounttarget)
 
-            mount_folder = f"/mnt/{uuid4().hex}"
-            os.mkdir(mount_folder)
+            mount_folder = f"{self.mountroot}/{uuid4().hex}"
+            os.makedirs(mount_folder)
 
             mount_command.append(mount_folder)
 
@@ -156,7 +134,7 @@ class BlockDevice:
     def umount(self):
         removed = []
         for mountpoint in self.mountpoints:
-            umount_command = ["umount", f"{mountpoint}"]
+            umount_command = ["sudo", "umount", f"{mountpoint}"]
 
             process = subprocess.run(
                 umount_command, capture_output=True, check=False, text=True
@@ -172,3 +150,20 @@ class BlockDevice:
 
         for mountpoint in removed:
             self.mountpoints.remove(mountpoint)
+
+    def destroy(self):
+        self.umount()
+
+        losetup_command = ["losetup", "--detach", self.blkdevice]
+        process = subprocess.run(
+            losetup_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            print(f"Detached {self.blkdevice} succes!")
+            self.blkdevice = process.stdout.strip()
+        else:
+            raise RuntimeError(
+                f"Error losetup detach: {process.stderr} {process.stdout}"
+            )
+
+        return None
