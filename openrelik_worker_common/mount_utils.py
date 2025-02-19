@@ -78,7 +78,23 @@ class BlockDevice:
         if "children" not in bd:
             return
         for children in bd.get("children"):
-            self.partitions.append(f"/dev/{children["name"]}")
+            partition = f"/dev/{children["name"]}"
+            if self._is_important_partition(children):
+                self.partitions.append(partition)
+
+    def _is_important_partition(self, partition: str):
+        # We only process partitions that are:
+        #   >100M
+        #   and
+        #   fs == ext, ntfs, vfat, apfs or xfs
+        # TODO(hacktobeer): mock function in tests: if partition["size"] < 100000000:
+        if partition["size"] < 100:
+            return False
+        fs_type = self._get_fstype(f"/dev/{partition["name"]}")
+        if fs_type not in ["xfs", "ext2", "ext3", "ext4", "ntfs", "vfat", "apfs"]:
+            return False
+
+        return True
 
     def _get_fstype(self, devname: str):
         blkid_command = ["sudo", "blkid", "-s", "TYPE", "-o", "value", f"{devname}"]
@@ -116,11 +132,11 @@ class BlockDevice:
             mount_command = ["sudo", "mount"]
             fstype = self._get_fstype(mounttarget)
             if fstype == "xfs":
-                mount_command.extend(["-o", "ro,norecover"])
-            elif fstype == "vfat":
-                mount_command.extend(["-o", "ro"])
-            else:
+                mount_command.extend(["-o", "ro,norecovery"])
+            elif fstype in ["ext2", "ext3", "ext4"]:
                 mount_command.extend(["-o", "ro,noload"])
+            else:
+                mount_command.extend(["-o", "ro"])
 
             mount_command.append(mounttarget)
 
