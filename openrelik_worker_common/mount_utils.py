@@ -51,8 +51,9 @@ class BlockDevice:
         return None
 
     def destroy(self):
-        losetup_command = ["losetup", "--detach", self.blkdevice]
+        self.umount()
 
+        losetup_command = ["losetup", "--detach", self.blkdevice]
         process = subprocess.run(
             losetup_command, capture_output=True, check=False, text=True
         )
@@ -153,6 +154,7 @@ class BlockDevice:
         return self.mountpoints
 
     def umount(self):
+        removed = []
         for mountpoint in self.mountpoints:
             umount_command = ["umount", f"{mountpoint}"]
 
@@ -162,7 +164,11 @@ class BlockDevice:
             if process.returncode == 0:
                 print(f"umount {mountpoint} success")
                 os.rmdir(mountpoint)
+                removed.append(mountpoint)
             else:
                 raise RuntimeError(
                     f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}"
                 )
+
+        for mountpoint in removed:
+            self.mountpoints.remove(mountpoint)
