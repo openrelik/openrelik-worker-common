@@ -26,15 +26,15 @@ class BlockDevice():
         self.blkdeviceinfo=None
         self.partitions=[]
         self.mountpoints=[]
-        
+
+        # Setup the loop device        
         self._losetup()
-        print(self.blkdevice)
 
+        # Parse block device info
         self._blkinfo()
-        print(self.blkdeviceinfo)
 
+        # Parse partition information
         self._parse_partitions()
-        print(self.partitions)
 
     def _losetup(self):
         losetup_command = [
@@ -55,7 +55,11 @@ class BlockDevice():
                 
         return None
     
-    def detach(self):
+    def destroy(self):
+        # print(self.mountpoints)
+        # self.umount()
+        # print(self.mountpoints)
+
         losetup_command = [
             "losetup",
             "--detach",
@@ -177,7 +181,7 @@ class BlockDevice():
                 print(f"umount {mountpoint} success") 
             else:
                 raise ValueError(f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}")
-                    
+
     def _calculate_size(self):
         pass
         
