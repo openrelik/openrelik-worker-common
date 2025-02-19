@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import json
+import logging
 import os
 import subprocess
 from uuid import uuid4
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class BlockDevice:
@@ -57,7 +61,7 @@ class BlockDevice:
         return None
 
     def _blkinfo(self):
-        lsblk_command = ["sudo", "lsblk", "-J", self.blkdevice]
+        lsblk_command = ["sudo", "lsblk", "-ba", "-J", self.blkdevice]
 
         process = subprocess.run(
             lsblk_command, capture_output=True, check=False, text=True
@@ -89,7 +93,7 @@ class BlockDevice:
                 f"Error running blkid on {devname}: {process.stderr} {process.stdout}"
             )
 
-    def mount(self, partition_name: str = ""):
+    def mount(self, partition_name: str = "", all: bool = False):
         to_mount = []
 
         if partition_name and partition_name not in self.partitions:
@@ -108,7 +112,7 @@ class BlockDevice:
             raise RuntimeError(f"Error: nothing to mount")
 
         for mounttarget in to_mount:
-            print(f"Trying to mount {mounttarget}")
+            logger.info(f"Trying to mount {mounttarget}")
             mount_command = ["sudo", "mount"]
             fstype = self._get_fstype(mounttarget)
             if fstype == "xfs":
@@ -129,7 +133,7 @@ class BlockDevice:
                 mount_command, capture_output=True, check=False, text=True
             )
             if process.returncode == 0:
-                print(f"Mounted {mounttarget} to {mount_folder}")
+                logger.info(f"Mounted {mounttarget} to {mount_folder}")
                 self.mountpoints.append(mount_folder)
             else:
                 raise RuntimeError(
@@ -147,7 +151,7 @@ class BlockDevice:
                 umount_command, capture_output=True, check=False, text=True
             )
             if process.returncode == 0:
-                print(f"umount {mountpoint} success")
+                logger.info(f"umount {mountpoint} success")
                 os.rmdir(mountpoint)
                 removed.append(mountpoint)
             else:
@@ -166,7 +170,7 @@ class BlockDevice:
             losetup_command, capture_output=True, check=False, text=True
         )
         if process.returncode == 0:
-            print(f"Detached {self.blkdevice} succes!")
+            logger.info(f"Detached {self.blkdevice} succes!")
             self.blkdevice = process.stdout.strip()
         else:
             raise RuntimeError(
