@@ -25,6 +25,7 @@ class BlockDevice():
         self.blkdevice=None
         self.blkdeviceinfo=None
         self.partitions=[]
+        self.mountpoints=[]
         
         self._losetup()
         print(self.blkdevice)
@@ -138,13 +139,26 @@ class BlockDevice():
             )
             if process.returncode == 0:
                 print(f"Mounted {mounttarget} to {mount_folder}")
+                self.mountpoints.append(mount_folder)
             else:
                 raise ValueError(f"Error running blkid: {process.stderr} {process.stdout}")
                 
 
-    
     def umount(self, all:str=True):
-        pass
+        for mountpoint in self.mountpoints:
+            umount_command = [
+            "umount",
+            f"{mountpoint}"
+            ]
+
+            process = subprocess.run(
+            umount_command, capture_output=True, check=False, text=True
+            )
+            if process.returncode == 0:
+                print(f"umount {mountpoint} success") 
+            else:
+                raise ValueError(f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}")
+                    
 
     def calculate_mnt_space(self):
         pass
