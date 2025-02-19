@@ -20,7 +20,6 @@ from uuid import uuid4
 
 class BlockDevice:
     def __init__(self, image_path: str):
-        pass
         self.image_path = image_path
         self.blkdevice = None
         self.blkdeviceinfo = None
@@ -62,7 +61,7 @@ class BlockDevice:
             self.blkdevice = process.stdout.strip()
         else:
             raise RuntimeError(
-                f"Error: no partitions found or other losetup error: {process.stderr}"
+                f"Error losetup detach: {process.stderr} {process.stdout}"
             )
 
         return None
@@ -77,7 +76,7 @@ class BlockDevice:
             self.blkdeviceinfo = json.loads(process.stdout.strip())
         else:
             raise RuntimeError(
-                f"Error: no partitions found or other lsblk error: {process.stderr}"
+                f"Error: no partitions found or other lsblk error: {process.stderr} {process.stdout}"
             )
 
         return None
@@ -148,7 +147,7 @@ class BlockDevice:
                 self.mountpoints.append(mount_folder)
             else:
                 raise RuntimeError(
-                    f"Error running mount: {process.stderr} {process.stdout}"
+                    f"Error running mount on {mounttarget}: {process.stderr} {process.stdout}"
                 )
 
         return self.mountpoints
@@ -167,6 +166,3 @@ class BlockDevice:
                 raise RuntimeError(
                     f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}"
                 )
-
-    def _calculate_size(self):
-        pass
