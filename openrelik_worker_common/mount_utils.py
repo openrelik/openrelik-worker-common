@@ -37,7 +37,14 @@ class BlockDevice:
         self._parse_partitions()
 
     def _losetup(self):
-        losetup_command = ["losetup", "--find", "--partscan", "--show", self.image_path]
+        losetup_command = [
+            "sudo",
+            "losetup",
+            "--find",
+            "--partscan",
+            "--show",
+            self.image_path,
+        ]
 
         process = subprocess.run(
             losetup_command, capture_output=True, check=False, text=True
@@ -50,7 +57,7 @@ class BlockDevice:
         return None
 
     def _blkinfo(self):
-        lsblk_command = ["lsblk", "-J", self.blkdevice]
+        lsblk_command = ["sudo", "lsblk", "-J", self.blkdevice]
 
         process = subprocess.run(
             lsblk_command, capture_output=True, check=False, text=True
@@ -70,7 +77,7 @@ class BlockDevice:
             self.partitions.append(f"/dev/{children["name"]}")
 
     def _get_fstype(self, devname: str):
-        blkid_command = ["blkid", "-s", "TYPE", "-o", "value", f"{devname}"]
+        blkid_command = ["sudo", "blkid", "-s", "TYPE", "-o", "value", f"{devname}"]
 
         process = subprocess.run(
             blkid_command, capture_output=True, check=False, text=True
@@ -154,7 +161,7 @@ class BlockDevice:
     def destroy(self):
         self.umount()
 
-        losetup_command = ["losetup", "--detach", self.blkdevice]
+        losetup_command = ["sudo", "losetup", "--detach", self.blkdevice]
         process = subprocess.run(
             losetup_command, capture_output=True, check=False, text=True
         )
