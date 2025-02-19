@@ -126,10 +126,12 @@ class BlockDevice:
             print(f"Trying to mount {mounttarget}")
             mount_command = ["mount"]
             fstype = self._get_fstype(mounttarget)
-            if fstype == "ext4":
-                mount_command.extend(["-o", "ro,noload"])
             if fstype == "xfs":
                 mount_command.extend(["-o", "ro,norecover"])
+            elif fstype == "vfat":
+                mount_command.extend(["-o", "ro"])
+            else:
+                mount_command.extend(["-o", "ro,noload"])
 
             mount_command.append(mounttarget)
 
