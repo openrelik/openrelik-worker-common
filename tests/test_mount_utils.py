@@ -29,6 +29,11 @@ class Utils(unittest.TestCase):
         if not Path(path).resolve().is_file():
             raise AssertionError(f"File does not exist: {path}")
 
+    def assertFileDoesNotExists(self, path):
+        """Helper function to check if file does not exists."""
+        if Path(path).resolve().is_file():
+            raise AssertionError(f"File exists: {path}")
+
     def test_BlkInfo(self):
         # TODO(hacktobeer): add more tests with blkinfo from GKE Node disks!!
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
@@ -51,7 +56,10 @@ class Utils(unittest.TestCase):
         self.cleanup(bd)
 
     def test_LoSetup(self):
-        with self.assertRaises(RuntimeError) as e:
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Error: losetup: imagedoesnotexist: failed to set up loop device: No such file or directory",
+        ) as e:
             mount_utils.BlockDevice("imagedoesnotexist")
             self.cleanup(bd)
 
@@ -68,6 +76,26 @@ class Utils(unittest.TestCase):
             self.assertFileExists(f"{folder}/testfile.txt")
         self.cleanup(bd)
 
+    def test_MountWithPartitions(self):
+        bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.mountroot = "./mnt"
+        bd.mount()
+
+        for folder in bd.mountpoints:
+            self.assertFileExists(f"{folder}/testfile.txt")
+        self.cleanup(bd)
+
+    def test_MountNothingTodo(self):
+        bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.blkdevice = "/dev/doesnotexist"
+        bd.partitions = ""
+
+        with self.assertRaisesRegex(
+            RuntimeError, "Error running blkid on /dev/doesnotexist"
+        ) as e:
+            bd.mount()
+            bd.cleanup()
+
     def test_ParsePartitions(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
         self.assertEqual(bd.partitions, [])
@@ -75,6 +103,19 @@ class Utils(unittest.TestCase):
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
         self.assertEqual(bd.partitions, ["/dev/loop0p1", "/dev/loop0p2"])
+        self.cleanup(bd)
+
+    def test_Umount(self):
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.mountroot = "./mnt"
+        bd.mount()
+        mountpoints = bd.mountpoints.copy()
+        bd.umount()
+
+        self.assertEqual(bd.mountpoints, [])
+        for folder in mountpoints:
+            self.assertFileDoesNotExists(folder)
+
         self.cleanup(bd)
 
     def cleanup(self, bd):
