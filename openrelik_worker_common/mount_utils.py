@@ -54,7 +54,25 @@ class BlockDevice():
             raise ValueError(f"Error: no partitions found or other losetup error: {process.stderr}")
                 
         return None
-
+    
+    def detach(self):
+        losetup_command = [
+            "losetup",
+            "--detach",
+            self.blkdevice
+        ]
+        
+        process = subprocess.run(
+        losetup_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            print(f"Detached {self.blkdevice} succes!")
+            self.blkdevice=process.stdout.strip()
+        else:
+            raise ValueError(f"Error: no partitions found or other losetup error: {process.stderr}")
+                
+        return None
+    
     def _blkinfo(self):
         lsblk_command = [
             "lsblk",
@@ -97,14 +115,14 @@ class BlockDevice():
         if process.returncode == 0:
             return process.stdout.strip()
         else:
-            raise ValueError(f"Error running blkid: {process.stderr} {process.stdout}")
+            raise ValueError(f"Error running blkid on {devname}: {process.stderr} {process.stdout}")
                 
     
     def mount(self, partition_name:str=""):
         to_mount = []
 
         if partition_name and partition_name not in self.partitions:
-            raise ValueError(f"Error: partition name {partition_name} not found")
+            raise ValueError(f"Error running mount: partition name {partition_name} not found")
         
         if partition_name:
             to_mount.append(partition_name)
@@ -141,10 +159,11 @@ class BlockDevice():
                 print(f"Mounted {mounttarget} to {mount_folder}")
                 self.mountpoints.append(mount_folder)
             else:
-                raise ValueError(f"Error running blkid: {process.stderr} {process.stdout}")
-                
+                raise ValueError(f"Error running mount: {process.stderr} {process.stdout}")
+        
+        return self.mountpoints
 
-    def umount(self, all:str=True):
+    def umount(self):
         for mountpoint in self.mountpoints:
             umount_command = [
             "umount",
@@ -159,7 +178,6 @@ class BlockDevice():
             else:
                 raise ValueError(f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}")
                     
-
-    def calculate_mnt_space(self):
+    def _calculate_size(self):
         pass
         
