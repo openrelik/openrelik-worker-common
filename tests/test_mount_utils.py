@@ -39,7 +39,7 @@ class Utils(unittest.TestCase):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
         self.assertEqual(
             str(bd.blkdeviceinfo),
-            "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': '1M', 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
+            "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
         )
         self.cleanup(bd)
 
