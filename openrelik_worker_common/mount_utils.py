@@ -45,7 +45,7 @@ class BlockDevice:
         if process.returncode == 0:
             self.blkdevice = process.stdout.strip()
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Error: no partitions found or other losetup error: {process.stderr}"
             )
 
@@ -61,7 +61,7 @@ class BlockDevice:
             print(f"Detached {self.blkdevice} succes!")
             self.blkdevice = process.stdout.strip()
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Error: no partitions found or other losetup error: {process.stderr}"
             )
 
@@ -76,7 +76,7 @@ class BlockDevice:
         if process.returncode == 0:
             self.blkdeviceinfo = json.loads(process.stdout.strip())
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Error: no partitions found or other lsblk error: {process.stderr}"
             )
 
@@ -100,7 +100,7 @@ class BlockDevice:
         if process.returncode == 0:
             return process.stdout.strip()
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Error running blkid on {devname}: {process.stderr} {process.stdout}"
             )
 
@@ -108,7 +108,7 @@ class BlockDevice:
         to_mount = []
 
         if partition_name and partition_name not in self.partitions:
-            raise ValueError(
+            raise RuntimeError(
                 f"Error running mount: partition name {partition_name} not found"
             )
 
@@ -120,7 +120,7 @@ class BlockDevice:
             to_mount = self.partitions
 
         if not to_mount:
-            raise ValueError(f"Error: nothing to mount")
+            raise RuntimeError(f"Error: nothing to mount")
 
         for mounttarget in to_mount:
             print(f"Trying to mount {mounttarget}")
@@ -147,7 +147,7 @@ class BlockDevice:
                 print(f"Mounted {mounttarget} to {mount_folder}")
                 self.mountpoints.append(mount_folder)
             else:
-                raise ValueError(
+                raise RuntimeError(
                     f"Error running mount: {process.stderr} {process.stdout}"
                 )
 
@@ -162,8 +162,9 @@ class BlockDevice:
             )
             if process.returncode == 0:
                 print(f"umount {mountpoint} success")
+                os.rmdir(mountpoint)
             else:
-                raise ValueError(
+                raise RuntimeError(
                     f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}"
                 )
 
