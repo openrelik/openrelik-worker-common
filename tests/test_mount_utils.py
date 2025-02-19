@@ -13,10 +13,9 @@
 # limitations under the License.
 
 import unittest
-import unittest.mock
 import subprocess
 from pathlib import Path
-import time
+from unittest.mock import patch
 
 from openrelik_worker_common import mount_utils
 
@@ -77,7 +76,10 @@ class Utils(unittest.TestCase):
 
         self.cleanup(bd)
 
-    def test_MountWithPartitions(self):
+    @patch.object(mount_utils.BlockDevice, "_is_important_partition")
+    def test_MountWithPartitions(self, mock_important):
+        mock_important.return_value = True
+
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
         bd.mountroot = "./mnt"
         bd.mount()
@@ -98,7 +100,10 @@ class Utils(unittest.TestCase):
         ) as e:
             bd.mount()
 
-    def test_ParsePartitions(self):
+    @patch.object(mount_utils.BlockDevice, "_is_important_partition")
+    def test_ParsePartitions(self, mock_important):
+        mock_important.return_value = True
+
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
         self.assertEqual(bd.partitions, [])
         self.cleanup(bd)
@@ -118,6 +123,23 @@ class Utils(unittest.TestCase):
         self.assertEqual(bd.mountpoints, [])
         for folder in mountpoints:
             self.assertFileDoesNotExists(folder)
+
+    @patch.object(mount_utils.BlockDevice, "_get_fstype")
+    def test_IsImportantPartition(self, mock_fstype):
+        partition = {"name": "loop0p1", "size": 1000000000}
+        mock_fstype.return_value = "ext4"
+        self.assertTrue(
+            mount_utils.BlockDevice._is_important_partition(
+                mount_utils.BlockDevice, partition
+            )
+        )
+
+        mock_fstype.return_value = "xdos"
+        self.assertFalse(
+            mount_utils.BlockDevice._is_important_partition(
+                mount_utils.BlockDevice, partition
+            )
+        )
 
     def cleanup(self, bd):
         bd.destroy()

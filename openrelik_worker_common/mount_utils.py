@@ -86,12 +86,19 @@ class BlockDevice:
         # We only process partitions that are:
         #   >100M
         #   and
-        #   fs == ext, ntfs, vfat, apfs or xfs
-        # TODO(hacktobeer): mock function in tests: if partition["size"] < 100000000:
-        if partition["size"] < 100:
+        #   fs == dos, ext2/3/4, ntfs, vfat, xfs
+        if partition["size"] < 100000000:
             return False
         fs_type = self._get_fstype(f"/dev/{partition["name"]}")
-        if fs_type not in ["xfs", "ext2", "ext3", "ext4", "ntfs", "vfat", "apfs"]:
+        if fs_type not in [
+            "dos",
+            "xfs",
+            "ext2",
+            "ext3",
+            "ext4",
+            "ntfs",
+            "vfat",
+        ]:
             return False
 
         return True
