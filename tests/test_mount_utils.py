@@ -74,6 +74,7 @@ class Utils(unittest.TestCase):
 
         for folder in bd.mountpoints:
             self.assertFileExists(f"{folder}/testfile.txt")
+
         self.cleanup(bd)
 
     def test_MountWithPartitions(self):
@@ -87,6 +88,8 @@ class Utils(unittest.TestCase):
 
     def test_MountNothingTodo(self):
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        self.cleanup(bd)
+
         bd.blkdevice = "/dev/doesnotexist"
         bd.partitions = ""
 
@@ -94,7 +97,6 @@ class Utils(unittest.TestCase):
             RuntimeError, "Error running blkid on /dev/doesnotexist"
         ) as e:
             bd.mount()
-            bd.cleanup()
 
     def test_ParsePartitions(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
@@ -111,25 +113,21 @@ class Utils(unittest.TestCase):
         bd.mount()
         mountpoints = bd.mountpoints.copy()
         bd.umount()
+        self.cleanup(bd)
 
         self.assertEqual(bd.mountpoints, [])
         for folder in mountpoints:
             self.assertFileDoesNotExists(folder)
 
-        self.cleanup(bd)
-
     def cleanup(self, bd):
-        # Cleanup all mounts and loop devices that might have been setup during the tests.
-        if bd:
-            bd.umount()
-        losetup_command = ["losetup", "-D"]
-        process = subprocess.run(
-            losetup_command, capture_output=True, check=False, text=True
-        )
+        bd.destroy()
 
     @classmethod
     def tearDownClass(self):
-        self.cleanup(self, None)
+        losetup_command = ["sudo", "losetup", "-D"]
+        process = subprocess.run(
+            losetup_command, capture_output=True, check=False, text=True
+        )
 
 
 if __name__ == "__main__":
