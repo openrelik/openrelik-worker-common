@@ -12,35 +12,140 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
+import subprocess
+from uuid import uuid4
 
-def _get_partitions(diskimage_path:str) -> list:
-    """List partitions from disk image file.
 
-    This function will list all partitions from a provided disk image file. 
+class BlockDevice():
+    def __init__(self, image_path:str):
+        pass
+        self.image_path=image_path
+        self.blkdevice=None
+        self.blkdeviceinfo=None
+        self.partitions=[]
+        
+        self._losetup()
+        print(self.blkdevice)
 
-    Args:
-        diskimage_path: The path to the disk image file to mount.
+        self._blkinfo()
+        print(self.blkdeviceinfo)
 
-    Returns:
-        A list of partitions detected with specs.
-    """
-    # losetup --find --partscan --show disk.img
-    # Use https://github.com/genalt/blkinfo
-    # Or lsblk -J /dev/loop0
-    return [{"name":"vda1","size":"123000"},{"name":"vda2","size":"100"}]
+        self._parse_partitions()
+        print(self.partitions)
 
-def mount_partitions(diskimage_path:str, all_partitions:bool) -> list:
-    """Mount partitions from disk image file.
+    def _losetup(self):
+        losetup_command = [
+            "losetup",
+            "--find",
+            "--partscan",
+            "--show",
+            self.image_path
+        ]
 
-    This function will mount the biggest or all partitions from a provided disk image file. It will
-    return the path where the partitions have been mounted.
+        process = subprocess.run(
+        losetup_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            self.blkdevice=process.stdout.strip()
+        else:
+            raise ValueError(f"Error: no partitions found or other losetup error: {process.stderr}")
+                
+        return None
 
-    Args:
-        diskimage_path: The path to the disk image file to mount.
-        all_partitions: If all partitions should be mounted or only the biggest.
+    def _blkinfo(self):
+        lsblk_command = [
+            "lsblk",
+            "-J",
+            self.blkdevice
+        ]
 
-    Returns:
-        A list of mounted partitions.
-    """
-    return ["/mnt/tmpdiskpath"]
+        process = subprocess.run(
+        lsblk_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            self.blkdeviceinfo=json.loads(process.stdout.strip())
+        else:
+            raise ValueError(f"Error: no partitions found or other lsblk error: {process.stderr}")
+                
+        return None
+    
+    def _parse_partitions(self):
+        bd = self.blkdeviceinfo.get('blockdevices')[0]
+        if 'children' not in bd:
+            # TODO(hacktobeer): make this a log instead of print.
+            print("No partitions found")
+            return
+        for children in bd.get("children"):
+            self.partitions.append(f"/dev/{children["name"]}")
+
+    def _get_fstype(self,devname:str):
+        blkid_command = [
+            "blkid",
+            "-s",
+            "TYPE",
+            "-o",
+            "value",
+            f"{devname}"
+        ]
+
+        process = subprocess.run(
+        blkid_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            return process.stdout.strip()
+        else:
+            raise ValueError(f"Error running blkid: {process.stderr} {process.stdout}")
+                
+    
+    def mount(self, partition_name:str=""):
+        to_mount = []
+
+        if partition_name and partition_name not in self.partitions:
+            raise ValueError(f"Error: partition name {partition_name} not found")
+        
+        if partition_name:
+            to_mount.append(partition_name)
+        elif not self.partitions:
+            to_mount.append(self.blkdevice)
+        elif self.partitions:
+            to_mount=self.partitions
+                
+        if not to_mount:
+            raise ValueError(f"Error: nothing to mount")
+        
+        for mounttarget in to_mount:
+            print(f"Trying to mount {mounttarget}")
+            mount_command = [
+                'mount'
+            ]
+            fstype = self._get_fstype(mounttarget)
+            if fstype == "ext4":
+                mount_command.extend(["-o","ro,noload"])
+            if fstype == "xfs":
+                mount_command.extend(["-o","ro,norecover"])
+            
+            mount_command.append(mounttarget)
+
+            mount_folder = f"/mnt/{uuid4().hex}"
+            os.mkdir(mount_folder)
+
+            mount_command.append(mount_folder)
+
+            process = subprocess.run(
+            mount_command, capture_output=True, check=False, text=True
+            )
+            if process.returncode == 0:
+                print(f"Mounted {mounttarget} to {mount_folder}")
+            else:
+                raise ValueError(f"Error running blkid: {process.stderr} {process.stdout}")
+                
+
+    
+    def umount(self, all:str=True):
+        pass
+
+    def calculate_mnt_space(self):
+        pass
+        
