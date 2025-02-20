@@ -73,7 +73,7 @@ class Utils(unittest.TestCase):
 
         for folder in bd.mountpoints:
             self.assertFileExists(f"{folder}/testfile.txt")
-        bd.umount()
+        bd.destroy()
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_MountWithPartitions(self, mock_important):
@@ -86,7 +86,7 @@ class Utils(unittest.TestCase):
         for folder in bd.mountpoints:
             self.assertFileExists(f"{folder}/testfile.txt")
 
-        bd.umount()
+        bd.destroy()
 
     def test_MountNothingTodo(self):
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
