@@ -23,7 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 class BlockDevice:
+    """BlockDevice provides functionality to map image files to block devices
+    and mount them."""
+
     def __init__(self, image_path: str):
+        """Initialize BlockDevice class instance.
+
+        Args:
+            image_path (str): path to the image file to map and mount.
+        """
         self.image_path = image_path
         self.blkdevice = None
         self.blkdeviceinfo = None
@@ -41,6 +49,10 @@ class BlockDevice:
         self._parse_partitions()
 
     def _losetup(self):
+        """Map image file to loopback device using losetup.
+
+        Returns: None
+        """
         losetup_command = [
             "sudo",
             "losetup",
@@ -61,6 +73,10 @@ class BlockDevice:
         return None
 
     def _blkinfo(self):
+        """Extract device and partition information using blkinfo.
+
+        Returns: None
+        """
         lsblk_command = ["sudo", "lsblk", "-ba", "-J", self.blkdevice]
 
         process = subprocess.run(
@@ -74,19 +90,32 @@ class BlockDevice:
         return None
 
     def _parse_partitions(self):
+        """Parse partition information from block device details.
+
+        Returns: None
+        """
         bd = self.blkdeviceinfo.get("blockdevices")[0]
         if "children" not in bd:
+            # No partitions on this disk.
             return
         for children in bd.get("children"):
             partition = f"/dev/{children["name"]}"
             if self._is_important_partition(children):
                 self.partitions.append(partition)
 
+        return None
+
     def _is_important_partition(self, partition: str):
-        # We only process partitions that are:
-        #   >100M
-        #   and
-        #   fs == dos, ext2/3/4, ntfs, vfat, xfs
+        """Decides if we will process a partition. We process the partition if:
+        * > 100Mbyte in size
+        * contains a filesystem type ext*, dos, vfat, xfs, ntfs
+
+        Args:
+            partitions (str): Name of the partition.
+
+        Returns:
+            bool: True or False for importance of partition.
+        """
         if partition["size"] < 100000000:
             return False
         fs_type = self._get_fstype(f"/dev/{partition["name"]}")
@@ -104,6 +133,14 @@ class BlockDevice:
         return True
 
     def _get_fstype(self, devname: str):
+        """Analyses the file system type of a block device or partition.
+
+        Args:
+            dev_name (str): block device or patitions device name.
+
+        Returns:
+            str: The filesystem type.
+        """
         blkid_command = ["sudo", "blkid", "-s", "TYPE", "-o", "value", f"{devname}"]
 
         process = subprocess.run(
@@ -116,7 +153,17 @@ class BlockDevice:
                 f"Error running blkid on {devname}: {process.stderr} {process.stdout}"
             )
 
-    def mount(self, partition_name: str = "", all: bool = False):
+        return None
+
+    def mount(self, partition_name: str = ""):
+        """Mounts a disk or one or more partititions on a mountpoint.
+
+        Args:
+            partitions_name (str): Nameof specific partition to mount.
+
+        Returns:
+            list: A list of paths the disk/partitions have been mounted on.
+        """
         to_mount = []
 
         if partition_name and partition_name not in self.partitions:
@@ -166,6 +213,10 @@ class BlockDevice:
         return self.mountpoints
 
     def umount(self):
+        """Umounts all registered mount_points.
+
+        Returns: None
+        """
         removed = []
         for mountpoint in self.mountpoints:
             umount_command = ["sudo", "umount", f"{mountpoint}"]
@@ -185,7 +236,13 @@ class BlockDevice:
         for mountpoint in removed:
             self.mountpoints.remove(mountpoint)
 
+        return None
+
     def destroy(self):
+        """Cleanup mount points and loopmount devices for BlockDevice instance.
+
+        Returns: None
+        """
         self.umount()
 
         losetup_command = ["sudo", "losetup", "--detach", self.blkdevice]
