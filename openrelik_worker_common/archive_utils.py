@@ -19,7 +19,9 @@ import subprocess
 from uuid import uuid4
 
 
-def extract_archive(input_file: dict, output_folder: str, log_file: str) -> str:
+def extract_archive(
+    input_file: dict, output_folder: str, log_file: str
+) -> tuple[str, str]:
     """Unpacks an archive.
 
     Args:
