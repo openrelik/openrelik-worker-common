@@ -62,7 +62,7 @@ class OutputFile:
         self.original_path = original_path
         self.source_file_id = source_file_id
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """
         Return a dictionary representation of the OutputFile object.
         This is what the mediator server gets and uses to create a File in the database.
@@ -131,7 +131,7 @@ def create_output_file(
     )
 
 
-def count_file_lines(file_path):
+def count_file_lines(file_path: str) -> int:
     """Count the number of lines in a file.
 
     Args:
@@ -202,7 +202,7 @@ def build_file_tree(
     return tree_root
 
 
-def delete_file_tree(root_path: tempfile.TemporaryDirectory):
+def delete_file_tree(root_path: tempfile.TemporaryDirectory) -> None:
     """Delete a temporary file tree folder structure.
 
     Args:

@@ -30,7 +30,9 @@ def encode_dict_to_base64(dict_to_encode: dict) -> str:
     return base64.b64encode(json_string.encode("utf-8")).decode("utf-8")
 
 
-def get_input_files(pipe_result: str, input_files: list, filter: dict = None) -> list:
+def get_input_files(
+    pipe_result: str, input_files: list[dict], filter: dict = None
+) -> list[dict]:
     """Prepares the input files for the task.
 
     Determines the appropriate input files by checking for results from a
@@ -56,11 +58,11 @@ def get_input_files(pipe_result: str, input_files: list, filter: dict = None) ->
 
 
 def create_task_result(
-    output_files: list,
+    output_files: list[dict],
     workflow_id: str,
     command: str = None,
     meta: dict = None,
-    file_reports: list = [],
+    file_reports: list[dict] = [],
     task_report: dict = None,
 ) -> str:
     """Create a task result dictionary and encode it to a base64 string.
@@ -87,7 +89,7 @@ def create_task_result(
     return encode_dict_to_base64(result)
 
 
-def filter_compatible_files(input_files, filter_dict):
+def filter_compatible_files(input_files: list[dict], filter_dict: dict) -> list[dict]:
     """
     Filters a list of files based on compatibility with a given filter,
     including partial matching.

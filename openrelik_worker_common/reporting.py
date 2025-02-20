@@ -19,76 +19,40 @@ from enum import IntEnum
 from .file_utils import OutputFile
 
 
-class MarkdownDocument:
-    """A class to represent a Markdown document.
-
-    Attributes:
-        title(string): The title of the report.
-        sections(list): A list of MarkdownDocumentSection objects.
-    """
-
-    def __init__(self, title: str = None):
-        """Initializes a MarkdownDocument object.
+class MarkdownTable:
+    def __init__(self, columns: list[str]):
+        """Initializes a MarkdownTable object.
 
         Args:
-            title(string): The title of the document (optional).
+            columns(list): A list of strings representing the column names.
         """
-        self.title: str = title
-        self.sections: list[MarkdownDocumentSection] = []
-        self.fmt = MarkdownFormatter()
+        self.columns = columns
+        self.rows = []
 
-    def add_section(self):
-        """Adds a new section to the document.
+    def add_row(self, row_data: list[str]):
+        """Adds a row of data to the table.
 
         Args:
-            title(string): The title of the section (optional).
+            row_data(list): A list of strings representing the row data.
         """
-        section = MarkdownDocumentSection()
-        self.sections.append(section)
-        return section
+        if len(row_data) != len(self.columns):
+            raise ValueError(
+                "Number of columns in row data does not match table columns."
+            )
+        self.rows.append(row_data)
 
-    def to_markdown(self):
-        """Generates a Markdown representation of the document.
+    def to_markdown(self) -> str:
+        """Generates a Markdown representation of the table.
 
         Returns:
-            string: A Markdown representation of the document.
+            string: A Markdown representation of the table.
         """
-        if self.title:
-            markdown_text = f"{self.fmt.title(text=self.title)}\n"
-
-        for section in self.sections:
-            markdown_text += f"\n{section.to_markdown()}"
-
+        markdown_text = "\n"
+        markdown_text += "|" + "|".join(self.columns) + "|\n"
+        markdown_text += "|" + "|".join(["---" for _ in self.columns]) + "|\n"
+        for row in self.rows:
+            markdown_text += "|" + "|".join(row) + "|\n"
         return markdown_text
-
-    def to_dict(self):
-        """Generates a dictionary representation of the document.
-
-        Returns:
-            dict: A dictionary representation of the document.
-        """
-        return {
-            "title": self.title,
-            "summary": self.summary,
-            "content": self.to_markdown(),
-            "priority": self.priority.value,
-        }
-
-    def to_json(self):
-        """Generates a JSON representation of the document.
-
-        Returns:
-            string: A JSON representation of the document.
-        """
-        return json.dumps(self.to_dict())
-
-    def __str__(self) -> str:
-        """String representation of the document.
-
-        Returns:
-            string: A string representation of the document.
-        """
-        return self.to_markdown()
 
 
 class MarkdownDocumentSection:
@@ -158,7 +122,7 @@ class MarkdownDocumentSection:
         """Add a horizontal rule to the section."""
         self.content.append(self.fmt.horizontal_rule())
 
-    def add_table(self, table):
+    def add_table(self, table: MarkdownTable):
         """Add a table to the section.
 
         Args:
@@ -166,7 +130,7 @@ class MarkdownDocumentSection:
         """
         return self.content.append(table.to_markdown())
 
-    def to_markdown(self):
+    def to_markdown(self) -> str:
         """Generates a Markdown representation of the section.
 
         Returns:
@@ -178,6 +142,78 @@ class MarkdownDocumentSection:
         return markdown_text
 
 
+class MarkdownDocument:
+    """A class to represent a Markdown document.
+
+    Attributes:
+        title(string): The title of the report.
+        sections(list): A list of MarkdownDocumentSection objects.
+    """
+
+    def __init__(self, title: str = None):
+        """Initializes a MarkdownDocument object.
+
+        Args:
+            title(string): The title of the document (optional).
+        """
+        self.title: str = title
+        self.sections: list[MarkdownDocumentSection] = []
+        self.fmt = MarkdownFormatter()
+
+    def add_section(self) -> MarkdownDocumentSection:
+        """Adds a new section to the document.
+
+        Args:
+            title(string): The title of the section (optional).
+        """
+        section = MarkdownDocumentSection()
+        self.sections.append(section)
+        return section
+
+    def to_markdown(self) -> str:
+        """Generates a Markdown representation of the document.
+
+        Returns:
+            string: A Markdown representation of the document.
+        """
+        if self.title:
+            markdown_text = f"{self.fmt.title(text=self.title)}\n"
+
+        for section in self.sections:
+            markdown_text += f"\n{section.to_markdown()}"
+
+        return markdown_text
+
+    def to_dict(self) -> dict:
+        """Generates a dictionary representation of the document.
+
+        Returns:
+            dict: A dictionary representation of the document.
+        """
+        return {
+            "title": self.title,
+            "summary": self.summary,
+            "content": self.to_markdown(),
+            "priority": self.priority.value,
+        }
+
+    def to_json(self) -> str:
+        """Generates a JSON representation of the document.
+
+        Returns:
+            string: A JSON representation of the document.
+        """
+        return json.dumps(self.to_dict())
+
+    def __str__(self) -> str:
+        """String representation of the document.
+
+        Returns:
+            string: A string representation of the document.
+        """
+        return self.to_markdown()
+
+
 class Report(MarkdownDocument):
     """A class to represent a task report, inheriting from MarkdownDocument.
 
@@ -186,7 +222,7 @@ class Report(MarkdownDocument):
         summary (str): A summary of the report.
     """
 
-    def __init__(self, title):
+    def __init__(self, title: str):
         """Initializes a TaskReport object.
 
         Args:
@@ -196,7 +232,7 @@ class Report(MarkdownDocument):
         self.priority = Priority.LOW
         self.summary = ""
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """Generates a dictionary representation of the report.
 
         Returns:
@@ -209,7 +245,7 @@ class Report(MarkdownDocument):
             "priority": self.priority.value,
         }
 
-    def to_json(self):
+    def to_json(self) -> str:
         """Generates a JSON representation of the report.
 
         Returns:
@@ -233,7 +269,7 @@ class Priority(IntEnum):
 
 
 class MarkdownFormatter:
-    def bold(self, text):
+    def bold(self, text: str) -> str:
         """Formats text as bold in Markdown format.
 
         Args:
@@ -244,7 +280,7 @@ class MarkdownFormatter:
         """
         return f"**{text.strip():s}**"
 
-    def heading(self, text, level=2):
+    def heading(self, text: str, level: int = 2) -> str:
         """Formats text as a heading in Markdown format.
 
         Args:
@@ -258,7 +294,7 @@ class MarkdownFormatter:
             raise ValueError("Heading level must be between 1 and 5")
         return f"{'#' * level} {text.strip()}"
 
-    def title(self, text):
+    def title(self, text: str) -> str:
         """Create a H1 heading to use as page title.
 
         Args:
@@ -269,7 +305,7 @@ class MarkdownFormatter:
         """
         return self.heading(text=text, level=1)
 
-    def bullet(self, text, level=1):
+    def bullet(self, text: str, level: int = 1) -> str:
         """Formats text as a bullet in Markdown format.
 
         Args:
@@ -281,7 +317,7 @@ class MarkdownFormatter:
         """
         return f"{'    ' * (level - 1):s}* {text.strip():s}"
 
-    def code(self, text):
+    def code(self, text: str) -> str:
         """Formats text as code in Markdown format.
 
         Args:
@@ -292,7 +328,7 @@ class MarkdownFormatter:
         """
         return f"`{text.strip():s}`"
 
-    def code_block(self, text):
+    def code_block(self, text: str) -> str:
         """Formats text as a code block in Markdown format.
 
         Args:
@@ -303,7 +339,7 @@ class MarkdownFormatter:
         """
         return f"```\n{text.strip()}\n```"
 
-    def paragraph(self, text):
+    def paragraph(self, text: str) -> str:
         """Formats text as a paragraph of text in Markdown format.
 
         Args:
@@ -314,7 +350,7 @@ class MarkdownFormatter:
         """
         return f"\n{text.strip()}\n"
 
-    def blockquote(self, text):
+    def blockquote(self, text: str) -> str:
         """Formats text as a blockquote of text in Markdown format.
 
         Args:
@@ -325,49 +361,13 @@ class MarkdownFormatter:
         """
         return f"> {text.strip()}\n"
 
-    def horizontal_rule(self):
+    def horizontal_rule(self) -> str:
         """Formats a horizontal rule in Markdown format.
 
         Return:
           string: Formatted text.
         """
         return "\n---\n"
-
-
-class MarkdownTable:
-    def __init__(self, columns):
-        """Initializes a MarkdownTable object.
-
-        Args:
-            columns(list): A list of strings representing the column names.
-        """
-        self.columns = columns
-        self.rows = []
-
-    def add_row(self, row_data):
-        """Adds a row of data to the table.
-
-        Args:
-            row_data(list): A list of strings representing the row data.
-        """
-        if len(row_data) != len(self.columns):
-            raise ValueError(
-                "Number of columns in row data does not match table columns."
-            )
-        self.rows.append(row_data)
-
-    def to_markdown(self):
-        """Generates a Markdown representation of the table.
-
-        Returns:
-            string: A Markdown representation of the table.
-        """
-        markdown_text = "\n"
-        markdown_text += "|" + "|".join(self.columns) + "|\n"
-        markdown_text += "|" + "|".join(["---" for _ in self.columns]) + "|\n"
-        for row in self.rows:
-            markdown_text += "|" + "|".join(row) + "|\n"
-        return markdown_text
 
 
 def serialize_file_report(
