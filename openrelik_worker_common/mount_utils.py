@@ -209,7 +209,6 @@ class BlockDevice:
                 raise RuntimeError(
                     f"Error running mount on {mounttarget}: {process.stderr} {process.stdout}"
                 )
-
         return self.mountpoints
 
     def umount(self):
