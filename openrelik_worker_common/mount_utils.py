@@ -24,7 +24,14 @@ logger = logging.getLogger(__name__)
 
 class BlockDevice:
     """BlockDevice provides functionality to map image files to block devices
-    and mount them."""
+    and mount them.
+
+    Usage:
+        bd = BlockDevice('/folder/path_to_disk_image.dd')
+        mountpoints = bd.mount()
+        # Do the things you need to do :)
+        bd.destroy()
+    """
 
     def __init__(self, image_path: str):
         """Initialize BlockDevice class instance.
