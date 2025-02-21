@@ -33,17 +33,17 @@ class BlockDevice:
         bd.destroy()
     """
 
-    MAX_PARTITION_SIZE = 100000000  # 100MB
+    MIN_PARTITION_SIZE = 100000000  # 100MB
 
-    def __init__(self, image_path: str, max_partition_size: int = MAX_PARTITION_SIZE):
+    def __init__(self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE):
         """Initialize BlockDevice class instance.
 
         Args:
             image_path (str): path to the image file to map and mount.
-            max_partition_size (int): maximum partition size, default MAX_PARTITION_SIZE
+            min_partition_size (int): minimum partition size, default MIN_PARTITION_SIZE
         """
         self.image_path = image_path
-        self.max_partition_size = max_partition_size
+        self.min_partition_size = min_partition_size
         self.blkdevice = None
         self.blkdeviceinfo = None
         self.partitions = []
@@ -154,7 +154,7 @@ class BlockDevice:
         Returns:
             bool: True or False for importance of partition.
         """
-        if partition["size"] < self.max_partition_size:
+        if partition["size"] < self.min_partition_size:
             return False
         fs_type = self._get_fstype(f"/dev/{partition["name"]}")
         if fs_type not in self.supported_fstypes:
