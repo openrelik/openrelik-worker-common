@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import unittest
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from openrelik_worker_common import mount_utils
 
@@ -44,6 +45,23 @@ class Utils(unittest.TestCase):
             str(bd.blkdeviceinfo),
             "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
         )
+
+    @patch("openrelik_worker_common.mount_utils.BlockDevice._losetup")
+    @patch("openrelik_worker_common.mount_utils.subprocess.run")
+    def test_BlkInfoError(self, mock_subprocess, mock_losetup):
+        mock_losetup.return_value = "/dev/loop0"
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stdout="this is not valid JSON", returncode=0
+        )
+
+        with self.assertRaises(RuntimeError):
+            mount_utils.BlockDevice("./test_data/image_vfat.img")
+
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stderr="device not found", returncode=1
+        )
+        with self.assertRaisesRegex(RuntimeError, "Error lsblk: device not found"):
+            mount_utils.BlockDevice("./test_data/image_vfat.img")
 
     def test_GetFsTypeVfat(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
@@ -88,6 +106,33 @@ class Utils(unittest.TestCase):
 
         bd.destroy()
 
+    @patch.object(mount_utils.BlockDevice, "_is_important_partition")
+    def test_MountWithNonExistingPartition(self, mock_important):
+        mock_important.return_value = True
+
+        bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.mountroot = self.mountroot
+
+        with self.assertRaisesRegex(
+            RuntimeError, "Error running mount: partition name /dev/loop0p999 not found"
+        ) as e:
+            bd.mount(partition_name="/dev/loop0p999")
+
+        bd.destroy()
+
+    @patch.object(mount_utils.BlockDevice, "_is_important_partition")
+    def test_MountWithNamedPartition(self, mock_important):
+        mock_important.return_value = True
+
+        bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.mountroot = self.mountroot
+        bd.mount(partition_name="/dev/loop0p1")
+
+        for folder in bd.mountpoints:
+            self.assertFileExists(f"{folder}/testfile.txt")
+
+        bd.destroy()
+
     def test_MountNothingTodo(self):
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
 
@@ -126,20 +171,14 @@ class Utils(unittest.TestCase):
 
     @patch.object(mount_utils.BlockDevice, "_get_fstype")
     def test_IsImportantPartition(self, mock_fstype):
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
         partition = {"name": "loop0p1", "size": 1000000000}
-        mock_fstype.return_value = "ext4"
-        self.assertTrue(
-            mount_utils.BlockDevice._is_important_partition(
-                mount_utils.BlockDevice, partition
-            )
-        )
 
-        mock_fstype.return_value = "xdos"
-        self.assertFalse(
-            mount_utils.BlockDevice._is_important_partition(
-                mount_utils.BlockDevice, partition
-            )
-        )
+        mock_fstype.return_value = "ext4"
+        self.assertTrue(bd._is_important_partition(partition))
+
+        mock_fstype.return_value = "typenotsupported"
+        self.assertFalse(bd._is_important_partition(partition))
 
     def tearDown(self):
         losetup_command = ["sudo", "losetup", "-D"]

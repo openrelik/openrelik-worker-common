@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,32 +33,41 @@ class BlockDevice:
         bd.destroy()
     """
 
-    def __init__(self, image_path: str):
+    MAX_PARTITION_SIZE = 100000000  # 100MB
+
+    def __init__(self, image_path: str, max_partition_size: int = MAX_PARTITION_SIZE):
         """Initialize BlockDevice class instance.
 
         Args:
             image_path (str): path to the image file to map and mount.
+            max_partition_size (int): maximum partition size, default MAX_PARTITION_SIZE
         """
         self.image_path = image_path
+        self.max_partition_size = max_partition_size
         self.blkdevice = None
         self.blkdeviceinfo = None
         self.partitions = []
         self.mountpoints = []
         self.mountroot = "/mnt"
+        self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
 
         # Setup the loop device
-        self._losetup()
+        self.blkdevice = self._losetup()
 
         # Parse block device info
-        self._blkinfo()
+        self.blkdeviceinfo = self._blkinfo()
 
         # Parse partition information
-        self._parse_partitions()
+        self.partitions = self._parse_partitions()
 
-    def _losetup(self):
+    def _losetup(self) -> str:
         """Map image file to loopback device using losetup.
 
-        Returns: None
+        Returns:
+            str: block device created by losetup
+
+        Raises:
+            RuntimeError: if there was an error running losetup.
         """
         losetup_command = [
             "sudo",
@@ -73,16 +82,26 @@ class BlockDevice:
             losetup_command, capture_output=True, check=False, text=True
         )
         if process.returncode == 0:
-            self.blkdevice = process.stdout.strip()
+            blkdevice = process.stdout.strip()
+            logger.info(
+                f"losetup: success creating {self.blkdevice} for {self.image_path}"
+            )
         else:
+            logger.error(
+                f"losetup: failed creating {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+            )
             raise RuntimeError(f"Error: {process.stderr} {process.stdout}")
 
-        return None
+        return blkdevice
 
-    def _blkinfo(self):
+    def _blkinfo(self) -> dict:
         """Extract device and partition information using blkinfo.
 
-        Returns: None
+        Returns:
+            dict: lsblk json serialized dict
+
+        Raises:
+            RuntimeError: if there was an error running lsblk or parsing the json output.
         """
         lsblk_command = ["sudo", "lsblk", "-ba", "-J", self.blkdevice]
 
@@ -90,27 +109,39 @@ class BlockDevice:
             lsblk_command, capture_output=True, check=False, text=True
         )
         if process.returncode == 0:
-            self.blkdeviceinfo = json.loads(process.stdout.strip())
+            try:
+                lsblk_json_output = process.stdout.strip()
+                blkdeviceinfo = json.loads(lsblk_json_output)
+            except json.JSONDecodeError as e:
+                logger.error(f"Error parsing lsblk json output: {lsblk_json_output}")
+                raise RuntimeError(
+                    f"Error parsing lsblk json output: {lsblk_json_output}: {e}"
+                )
         else:
-            raise RuntimeError(f"Error lsblk:  {process.stderr} {process.stdout}")
+            logger.error(
+                f"Error running lsblk on {self.blkdevice}: {process.stderr} {process.stdout}"
+            )
+            raise RuntimeError(f"Error lsblk: {process.stderr} {process.stdout}")
 
-        return None
+        return blkdeviceinfo
 
-    def _parse_partitions(self):
+    def _parse_partitions(self) -> list:
         """Parse partition information from block device details.
 
-        Returns: None
+        Returns:
+            list[str]: a list of partitions
         """
+        partitions = []
         bd = self.blkdeviceinfo.get("blockdevices")[0]
         if "children" not in bd:
             # No partitions on this disk.
-            return
+            return partitions
         for children in bd.get("children"):
             partition = f"/dev/{children["name"]}"
             if self._is_important_partition(children):
-                self.partitions.append(partition)
+                partitions.append(partition)
 
-        return None
+        return partitions
 
     def _is_important_partition(self, partition: str):
         """Decides if we will process a partition. We process the partition if:
@@ -123,18 +154,10 @@ class BlockDevice:
         Returns:
             bool: True or False for importance of partition.
         """
-        if partition["size"] < 100000000:
+        if partition["size"] < self.max_partition_size:
             return False
         fs_type = self._get_fstype(f"/dev/{partition["name"]}")
-        if fs_type not in [
-            "dos",
-            "xfs",
-            "ext2",
-            "ext3",
-            "ext4",
-            "ntfs",
-            "vfat",
-        ]:
+        if fs_type not in self.supported_fstypes:
             return False
 
         return True
@@ -147,6 +170,9 @@ class BlockDevice:
 
         Returns:
             str: The filesystem type.
+
+        Raises:
+          RuntimeError: If there was an error running blkid.
         """
         blkid_command = ["sudo", "blkid", "-s", "TYPE", "-o", "value", f"{devname}"]
 
@@ -156,24 +182,31 @@ class BlockDevice:
         if process.returncode == 0:
             return process.stdout.strip()
         else:
+            logger.error(
+                f"Error running blkid on {devname}: {process.stderr} {process.stdout}"
+            )
             raise RuntimeError(
                 f"Error running blkid on {devname}: {process.stderr} {process.stdout}"
             )
-
-        return None
 
     def mount(self, partition_name: str = ""):
         """Mounts a disk or one or more partititions on a mountpoint.
 
         Args:
-            partitions_name (str): Nameof specific partition to mount.
+            partitions_name (str): Name of specific partition to mount.
 
         Returns:
             list: A list of paths the disk/partitions have been mounted on.
+
+        Raises:
+          RuntimeError: If there as an error running mount.
         """
         to_mount = []
 
         if partition_name and partition_name not in self.partitions:
+            logger.error(
+                f"Error running mount: partition name {partition_name} not found"
+            )
             raise RuntimeError(
                 f"Error running mount: partition name {partition_name} not found"
             )
@@ -186,6 +219,7 @@ class BlockDevice:
             to_mount = self.partitions
 
         if not to_mount:
+            logger.error(f"Error: nothing to mount")
             raise RuntimeError(f"Error: nothing to mount")
 
         for mounttarget in to_mount:
@@ -213,6 +247,9 @@ class BlockDevice:
                 logger.info(f"Mounted {mounttarget} to {mount_folder}")
                 self.mountpoints.append(mount_folder)
             else:
+                logger.error(
+                    f"Error running mount on {mounttarget}: {process.stderr} {process.stdout}"
+                )
                 raise RuntimeError(
                     f"Error running mount on {mounttarget}: {process.stderr} {process.stdout}"
                 )
@@ -222,6 +259,9 @@ class BlockDevice:
         """Umounts all registered mount_points.
 
         Returns: None
+
+        Raises:
+            RuntimeError: If there was an error running umount.
         """
         removed = []
         for mountpoint in self.mountpoints:
@@ -235,6 +275,9 @@ class BlockDevice:
                 os.rmdir(mountpoint)
                 removed.append(mountpoint)
             else:
+                logger.error(
+                    f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}"
+                )
                 raise RuntimeError(
                     f"Error running umount on {mountpoint}: {process.stderr} {process.stdout}"
                 )
@@ -242,12 +285,13 @@ class BlockDevice:
         for mountpoint in removed:
             self.mountpoints.remove(mountpoint)
 
-        return None
-
     def destroy(self):
         """Cleanup mount points and loopmount devices for BlockDevice instance.
 
         Returns: None
+
+        Raises:
+            RuntimeError: If there wa an error running losetup.
         """
         self.umount()
 
@@ -259,8 +303,7 @@ class BlockDevice:
             logger.info(f"Detached {self.blkdevice} succes!")
             self.blkdevice = process.stdout.strip()
         else:
+            logger.error(f"Detached {self.blkdevice} failed!")
             raise RuntimeError(
                 f"Error losetup detach: {process.stderr} {process.stdout}"
             )
-
-        return None
