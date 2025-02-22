@@ -4,7 +4,7 @@ from openrelik_worker_common.debug_utils import start_debugger
 import os
 
 
-class Utils(unittest.TestCase):
+class TestDebugUtils(unittest.TestCase):
     @patch("debugpy.listen")
     def test_start_debugger_default_port(self, mock_listen):
         start_debugger()
