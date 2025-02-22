@@ -30,7 +30,7 @@ class BlockDevice:
         bd = BlockDevice('/folder/path_to_disk_image.dd')
         mountpoints = bd.mount()
         # Do the things you need to do :)
-        bd.destroy()
+        bd.umount()
     """
 
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
