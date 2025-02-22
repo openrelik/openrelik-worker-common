@@ -91,7 +91,7 @@ class Utils(unittest.TestCase):
 
         for folder in bd.mountpoints:
             self.assertFileExists(f"{folder}/testfile.txt")
-        bd.destroy()
+        bd.umount()
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_MountWithPartitions(self, mock_important):
@@ -104,7 +104,7 @@ class Utils(unittest.TestCase):
         for folder in bd.mountpoints:
             self.assertFileExists(f"{folder}/testfile.txt")
 
-        bd.destroy()
+        bd.umount()
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_MountWithNonExistingPartition(self, mock_important):
@@ -118,7 +118,7 @@ class Utils(unittest.TestCase):
         ) as e:
             bd.mount(partition_name="/dev/loop0p999")
 
-        bd.destroy()
+        bd.umount()
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_MountWithNamedPartition(self, mock_important):
@@ -131,7 +131,7 @@ class Utils(unittest.TestCase):
         for folder in bd.mountpoints:
             self.assertFileExists(f"{folder}/testfile.txt")
 
-        bd.destroy()
+        bd.umount()
 
     def test_MountNothingTodo(self):
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")

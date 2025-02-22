@@ -33,14 +33,16 @@ class BlockDevice:
         bd.destroy()
     """
 
-    MIN_PARTITION_SIZE = 100000000  # 100MB
+    MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
 
-    def __init__(self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE):
+    def __init__(
+        self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE_BYTES
+    ):
         """Initialize BlockDevice class instance.
 
         Args:
             image_path (str): path to the image file to map and mount.
-            min_partition_size (int): minimum partition size, default MIN_PARTITION_SIZE
+            min_partition_size (int): minimum partition size, default MIN_PARTITION_SIZE_BYTES
         """
         self.image_path = image_path
         self.min_partition_size = min_partition_size
@@ -143,13 +145,13 @@ class BlockDevice:
 
         return partitions
 
-    def _is_important_partition(self, partition: str):
+    def _is_important_partition(self, partition: dict):
         """Decides if we will process a partition. We process the partition if:
         * > 100Mbyte in size
         * contains a filesystem type ext*, dos, vfat, xfs, ntfs
 
         Args:
-            partitions (str): Name of the partition.
+            partition (dict): Partition details from lsblk.
 
         Returns:
             bool: True or False for importance of partition.
@@ -166,7 +168,7 @@ class BlockDevice:
         """Analyses the file system type of a block device or partition.
 
         Args:
-            dev_name (str): block device or patitions device name.
+            devname (str): block device or partitions device name.
 
         Returns:
             str: The filesystem type.
@@ -255,7 +257,7 @@ class BlockDevice:
                 )
         return self.mountpoints
 
-    def umount(self):
+    def _umount_all(self):
         """Umounts all registered mount_points.
 
         Returns: None
@@ -285,16 +287,14 @@ class BlockDevice:
         for mountpoint in removed:
             self.mountpoints.remove(mountpoint)
 
-    def destroy(self):
-        """Cleanup mount points and loopmount devices for BlockDevice instance.
+    def _detach_device(self):
+        """Cleanup loopmount devices for BlockDevice instance.
 
         Returns: None
 
         Raises:
             RuntimeError: If there wa an error running losetup.
         """
-        self.umount()
-
         losetup_command = ["sudo", "losetup", "--detach", self.blkdevice]
         process = subprocess.run(
             losetup_command, capture_output=True, check=False, text=True
@@ -307,3 +307,7 @@ class BlockDevice:
             raise RuntimeError(
                 f"Error losetup detach: {process.stderr} {process.stdout}"
             )
+
+    def umount(self):
+        self._umount_all()
+        self._detach_device()
