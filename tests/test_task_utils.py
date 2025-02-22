@@ -69,6 +69,91 @@ class Utils(unittest.TestCase):
         )
         self.assertEqual(result, task_utils.encode_dict_to_base64(expected))
 
+    input_files = [
+        {
+            "data_type": "image/jpeg",
+            "mime_type": "image/jpeg",
+            "display_name": "image.jpg",
+            "extension": "jpg",
+        },
+        {
+            "data_type": "text/plain",
+            "mime_type": "text/plain",
+            "display_name": "document.txt",
+            "extension": "txt",
+        },
+    ]
+
+    def test_filter_compatible_files_data_type_match(self):
+        filter_dict = {"data_types": ["image/*"]}
+        expected_result = [
+            {
+                "data_type": "image/jpeg",
+                "mime_type": "image/jpeg",
+                "display_name": "image.jpg",
+                "extension": "jpg",
+            },
+        ]
+        self.assertEqual(
+            task_utils.filter_compatible_files(self.input_files, filter_dict),
+            expected_result,
+        )
+
+    def test_filter_compatible_files_mime_type_match(self):
+        filter_dict = {"mime_types": ["text/*"]}
+        expected_result = [
+            {
+                "data_type": "text/plain",
+                "mime_type": "text/plain",
+                "display_name": "document.txt",
+                "extension": "txt",
+            },
+        ]
+        self.assertEqual(
+            task_utils.filter_compatible_files(self.input_files, filter_dict),
+            expected_result,
+        )
+
+    def test_filter_compatible_files_filename_match(self):
+        filter_dict = {"filenames": ["image.*"]}
+        expected_result = [
+            {
+                "data_type": "image/jpeg",
+                "mime_type": "image/jpeg",
+                "display_name": "image.jpg",
+                "extension": "jpg",
+            },
+        ]
+        self.assertEqual(
+            task_utils.filter_compatible_files(self.input_files, filter_dict),
+            expected_result,
+        )
+
+    def test_filter_compatible_files_no_match(self):
+        filter_dict = {"data_types": ["video/*"]}
+        expected_result = []
+        self.assertEqual(
+            task_utils.filter_compatible_files(self.input_files, filter_dict),
+            expected_result,
+        )
+
+    def test_filter_compatible_files_empty_input(self):
+        input_files = []
+        filter_dict = {"data_types": ["image/*"]}
+        expected_result = []
+        self.assertEqual(
+            task_utils.filter_compatible_files(input_files, filter_dict),
+            expected_result,
+        )
+
+    def test_filter_compatible_files_empty_filter(self):
+        filter_dict = {}
+        expected_result = []
+        self.assertEqual(
+            task_utils.filter_compatible_files(self.input_files, filter_dict),
+            expected_result,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

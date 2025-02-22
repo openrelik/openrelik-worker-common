@@ -40,7 +40,7 @@ def extract_archive(
         raise RuntimeError("7z executable not found!")
 
     export_folder = os.path.join(output_folder, uuid4().hex)
-    os.mkdir(export_folder)
+    os.makedirs(export_folder)
 
     if input_filename.endswith((".tgz", ".tar.gz")):
         command = [

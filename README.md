@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/openrelik/openrelik-worker-common/graph/badge.svg?token=T0Z72PB3YL)](https://codecov.io/gh/openrelik/openrelik-worker-common)
+
 # openrelik-worker-common
 Common utilities for OpenRelik workers
 
