@@ -7,7 +7,7 @@ import subprocess
 from uuid import uuid4
 
 
-class Utils(unittest.TestCase):
+class TestArchiveUtils(unittest.TestCase):
     output_folder = "/tmp"
     log_file = "/tmp/log.txt"
 
