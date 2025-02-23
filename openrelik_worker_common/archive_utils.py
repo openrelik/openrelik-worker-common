@@ -19,7 +19,9 @@ import subprocess
 from uuid import uuid4
 
 
-def extract_archive(input_file: dict, output_folder: str, log_file: str) -> str:
+def extract_archive(
+    input_file: dict, output_folder: str, log_file: str
+) -> tuple[str, str]:
     """Unpacks an archive.
 
     Args:
@@ -38,7 +40,7 @@ def extract_archive(input_file: dict, output_folder: str, log_file: str) -> str:
         raise RuntimeError("7z executable not found!")
 
     export_folder = os.path.join(output_folder, uuid4().hex)
-    os.mkdir(export_folder)
+    os.makedirs(export_folder)
 
     if input_filename.endswith((".tgz", ".tar.gz")):
         command = [

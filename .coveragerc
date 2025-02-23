@@ -2,3 +2,4 @@
 omit = 
     # ignore all test cases in tests/
     tests/*
+    
