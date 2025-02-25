@@ -1,8 +1,11 @@
 [tool.poetry]
 name = "openrelik-worker-common"
-version = "2024.11.27"
+version = "0.10.0"
 description = "Common utilities for OpenRelik workers"
-authors = ["Johan Berggren <jberggren@gmail.com>", "hacktobeer <ramsesdebeer@gmail.com>"]
+authors = [
+    "Johan Berggren <jberggren@gmail.com>",
+    "hacktobeer <ramsesdebeer@gmail.com>",
+]
 readme = "README.md"
 
 [tool.poetry.dependencies]
