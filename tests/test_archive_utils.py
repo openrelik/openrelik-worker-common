@@ -32,6 +32,22 @@ class TestArchiveUtils(unittest.TestCase):
     @patch("subprocess.call")
     @patch("subprocess.check_output")
     @patch("shutil.which")
+    def test_extract_archive_tgz_no_filter(
+        self, mock_which, mock_check_output, mock_subprocess_call
+    ):
+        input_file = {"path": "/path/to/archive.tgz", "display_name": "archive.tgz"}
+        mock_check_output.return_value = b""
+        mock_which.return_value = True
+        mock_subprocess_call.return_value = 0
+
+        result = extract_archive(input_file, self.output_folder, self.log_file)
+        self.assertIn("tar -vxzf", result[0])
+        self.assertNotIn("--wildcards", result[0])
+        self.assertIn(self.output_folder, result[1])
+
+    @patch("subprocess.call")
+    @patch("subprocess.check_output")
+    @patch("shutil.which")
     def test_extract_archive_zip(
         self, mock_which, mock_check_output, mock_subprocess_call
     ):
@@ -44,6 +60,23 @@ class TestArchiveUtils(unittest.TestCase):
             input_file, self.output_folder, self.log_file, self.file_filter)
         self.assertIn("7z x", result[0])
         self.assertIn("*.txt", result[0])
+        self.assertIn(self.output_folder, result[1])
+
+
+    @patch("subprocess.call")
+    @patch("subprocess.check_output")
+    @patch("shutil.which")
+    def test_extract_archive_zip_no_filter(
+        self, mock_which, mock_check_output, mock_subprocess_call
+    ):
+        input_file = {"path": "/path/to/archive.zip", "display_name": "archive.zip"}
+        mock_check_output.return_value = b""
+        mock_which.return_value = True
+        mock_subprocess_call.return_value = 0
+
+        result = extract_archive(input_file, self.output_folder, self.log_file)
+        self.assertIn("7z x", result[0])
+        self.assertNotIn("-r", result[0])
         self.assertIn(self.output_folder, result[1])
 
     @patch("subprocess.call")
