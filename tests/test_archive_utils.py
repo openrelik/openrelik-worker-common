@@ -10,6 +10,7 @@ from uuid import uuid4
 class TestArchiveUtils(unittest.TestCase):
     output_folder = "/tmp"
     log_file = "/tmp/log.txt"
+    file_filter = ["*.txt", "*.evtx"]
 
     @patch("subprocess.call")
     @patch("subprocess.check_output")
@@ -22,7 +23,8 @@ class TestArchiveUtils(unittest.TestCase):
         mock_which.return_value = True
         mock_subprocess_call.return_value = 0
 
-        result = extract_archive(input_file, self.output_folder, self.log_file)
+        result = extract_archive(
+            input_file, self.output_folder, self.log_file, self.file_filter)
         self.assertIn("tar -vxzf", result[0])
         self.assertIn(self.output_folder, result[1])
 
@@ -37,7 +39,8 @@ class TestArchiveUtils(unittest.TestCase):
         mock_which.return_value = True
         mock_subprocess_call.return_value = 0
 
-        result = extract_archive(input_file, self.output_folder, self.log_file)
+        result = extract_archive(
+            input_file, self.output_folder, self.log_file, self.file_filter)
         self.assertIn("7z x", result[0])
         self.assertIn(self.output_folder, result[1])
 
@@ -48,7 +51,8 @@ class TestArchiveUtils(unittest.TestCase):
         mock_subprocess_call.return_value = 1
 
         with self.assertRaises(RuntimeError):
-            extract_archive(input_file, self.output_folder, self.log_file)
+            extract_archive(input_file, self.output_folder, self.log_file,
+                            self.file_filter)
 
     @patch("subprocess.check_output")
     def test_extract_archive_7z_not_found(self, mock_check_output):
@@ -57,7 +61,8 @@ class TestArchiveUtils(unittest.TestCase):
 
         with patch("shutil.which", return_value=None):
             with self.assertRaises(RuntimeError):
-                extract_archive(input_file, self.output_folder, self.log_file)
+                extract_archive(input_file, self.output_folder, self.log_file,
+                                self.file_filter)
 
     @patch("os.makedirs")
     @patch("shutil.which")
@@ -67,7 +72,8 @@ class TestArchiveUtils(unittest.TestCase):
         mock_which.return_value = True
 
         with self.assertRaises(OSError):
-            extract_archive(input_file, self.output_folder, self.log_file)
+            extract_archive(input_file, self.output_folder, self.log_file,
+                            self.file_filter)
 
 
 if __name__ == "__main__":
