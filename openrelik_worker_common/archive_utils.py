@@ -20,7 +20,7 @@ from uuid import uuid4
 
 
 def extract_archive(
-    input_file: dict, output_folder: str, log_file: str
+    input_file: dict, output_folder: str, log_file: str, file_filter: list = []
 ) -> tuple[str, str]:
     """Unpacks an archive.
 
@@ -28,6 +28,7 @@ def extract_archive(
       input_file(dict): Input file dict.
       output_folder(string): OpenRelik output_folder.
       log_file(string): Log file path.
+      file_filter(list): List of file patterns to extract (optional).
 
     Return:
       command(string): The executed command string.
@@ -50,6 +51,10 @@ def extract_archive(
             "-C",
             f"{export_folder}",
         ]
+        if file_filter:
+            command.extend(["--recursion", "--no-anchored"])
+            for pattern in file_filter:
+                command.extend(["--wildcards", pattern.strip()])
     else:
         command = [
             "7z",
@@ -57,6 +62,10 @@ def extract_archive(
             input_path,
             f"-o{export_folder}",
         ]
+        if file_filter:
+            command.append("-r")
+            for pattern in file_filter:
+                command.append(pattern.strip())
 
     command_string = " ".join(command)
     with open(log_file, "wb") as out:
