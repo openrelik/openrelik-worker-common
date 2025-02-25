@@ -26,6 +26,7 @@ class TestArchiveUtils(unittest.TestCase):
         result = extract_archive(
             input_file, self.output_folder, self.log_file, self.file_filter)
         self.assertIn("tar -vxzf", result[0])
+        self.assertIn("*.txt", result[0])
         self.assertIn(self.output_folder, result[1])
 
     @patch("subprocess.call")
@@ -42,6 +43,7 @@ class TestArchiveUtils(unittest.TestCase):
         result = extract_archive(
             input_file, self.output_folder, self.log_file, self.file_filter)
         self.assertIn("7z x", result[0])
+        self.assertIn("*.txt", result[0])
         self.assertIn(self.output_folder, result[1])
 
     @patch("subprocess.call")
