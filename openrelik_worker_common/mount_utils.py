@@ -15,8 +15,9 @@
 import json
 import logging
 import os
-from shutil import which
 import subprocess
+
+from shutil import which
 from uuid import uuid4
 
 
