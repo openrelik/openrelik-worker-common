@@ -46,6 +46,12 @@ class Utils(unittest.TestCase):
             "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
         )
 
+    @patch("openrelik_worker_common.mount_utils.which")
+    def test_BlkInfo_tools_not_available(self, mock_which):
+        mock_which.return_value = None
+        with self.assertRaises(RuntimeError):
+            bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+
     @patch("openrelik_worker_common.mount_utils.BlockDevice._losetup")
     @patch("openrelik_worker_common.mount_utils.subprocess.run")
     def test_BlkInfoError(self, mock_subprocess, mock_losetup):
@@ -179,6 +185,30 @@ class Utils(unittest.TestCase):
 
         mock_fstype.return_value = "typenotsupported"
         self.assertFalse(bd._is_important_partition(partition))
+
+    @patch("openrelik_worker_common.mount_utils.which")
+    def test_RequiredToolsAvailable_all_tools_available(self, mock_which):
+        mock_which.return_value = "/path/to/tool"
+        result = mount_utils.BlockDevice._required_tools_available(None)
+        self.assertTrue(result[0])
+        self.assertEqual(result[1], "")
+
+    @patch("openrelik_worker_common.mount_utils.which")
+    def test_RequiredToolsAvailable_no_tools_available(self, mock_which):
+        mock_which.return_value = None
+        result = mount_utils.BlockDevice._required_tools_available(None)
+        self.assertFalse(result[0])
+        self.assertIn("lsblk", result[1])
+        self.assertIn("blkid", result[1])
+        self.assertIn("mount", result[1])
+        self.assertRaises(RuntimeError)
+
+    @patch("openrelik_worker_common.mount_utils.which")
+    def test_RequiredToolsAvailable__some_tools_available(self, mock_which):
+        mock_which.side_effect = ["/path/to/lsblk", None, "/path/to/mount"]
+        result = mount_utils.BlockDevice._required_tools_available(None)
+        self.assertFalse(result[0])
+        self.assertIn("blkid", result[1])
 
     def tearDown(self):
         losetup_command = ["sudo", "losetup", "-D"]
