@@ -46,6 +46,12 @@ class Utils(unittest.TestCase):
             "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
         )
 
+    @patch("openrelik_worker_common.mount_utils.which")
+    def test_BlkInfo_tools_not_available(self, mock_which):
+        mock_which.return_value = None
+        with self.assertRaises(RuntimeError):
+            bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+
     @patch("openrelik_worker_common.mount_utils.BlockDevice._losetup")
     @patch("openrelik_worker_common.mount_utils.subprocess.run")
     def test_BlkInfoError(self, mock_subprocess, mock_losetup):
