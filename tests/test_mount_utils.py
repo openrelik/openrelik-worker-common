@@ -195,6 +195,7 @@ class Utils(unittest.TestCase):
         self.assertIn("lsblk", result[1])
         self.assertIn("blkid", result[1])
         self.assertIn("mount", result[1])
+        self.assertRaises(RuntimeError)
 
     @patch("openrelik_worker_common.mount_utils.which")
     def test_RequiredToolsAvailable__some_tools_available(self, mock_which):
