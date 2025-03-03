@@ -15,9 +15,9 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 
-from shutil import which
 from uuid import uuid4
 
 
@@ -56,9 +56,8 @@ class BlockDevice:
         self.mountroot = "/mnt"
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
 
-        (available, errmsg) = self._required_tools_available()
-        if not available:
-            raise RuntimeError(f"Error tools missing: {errmsg}")
+        # Check if required tools are available
+        self._required_tools_available()
 
         # Setup the loop device
         self.blkdevice = self._losetup()
@@ -103,23 +102,19 @@ class BlockDevice:
 
         return blkdevice
 
-    def _required_tools_available(self) -> tuple[bool, str]:
+    def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
 
         Returns:
             tuple: tuple of return bool and error message
         """
-        errmsg = ""
-        ok = True
-
         tools = ["lsblk", "blkid", "mount"]
+        missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
-        for tool in tools:
-            if not which(tool):
-                errmsg += f" {tool} "
-                ok = False
+        if missing_tools:
+            raise RuntimeError(f"Missing required tools: {' '.join(missing_tools)}")
 
-        return (ok, errmsg)
+        return True
 
     def _blkinfo(self) -> dict:
         """Extract device and partition information using blkinfo.
