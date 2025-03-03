@@ -180,6 +180,30 @@ class Utils(unittest.TestCase):
         mock_fstype.return_value = "typenotsupported"
         self.assertFalse(bd._is_important_partition(partition))
 
+    @patch("openrelik_worker_common.mount_utils.shutil.which")
+    def test_RequiredToolsAvailable_all_tools_available(self, mock_which):
+        mock_which.return_value = "/path/to/tool"
+        result = mount_utils.BlockDevice._required_tools_available(None)
+        self.assertTrue(result)
+
+    @patch("openrelik_worker_common.mount_utils.shutil.which")
+    def test_RequiredToolsAvailable_no_tools_available(self, mock_which):
+        mock_which.return_value = None
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Missing required tools: lsblk blkid mount",
+        ) as e:
+            mount_utils.BlockDevice._required_tools_available(None)
+
+    @patch("openrelik_worker_common.mount_utils.shutil.which")
+    def test_RequiredToolsAvailable__some_tools_available(self, mock_which):
+        mock_which.side_effect = ["/path/to/lsblk", None, "/path/to/mount"]
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Missing required tools: blkid",
+        ) as e:
+            mount_utils.BlockDevice._required_tools_available(None)
+
     def tearDown(self):
         losetup_command = ["sudo", "losetup", "-D"]
         process = subprocess.run(losetup_command, capture_output=False, check=False)

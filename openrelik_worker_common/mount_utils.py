@@ -15,8 +15,11 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
+
 from uuid import uuid4
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,6 +55,9 @@ class BlockDevice:
         self.mountpoints = []
         self.mountroot = "/mnt"
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
+
+        # Check if required tools are available
+        self._required_tools_available()
 
         # Setup the loop device
         self.blkdevice = self._losetup()
@@ -96,6 +102,20 @@ class BlockDevice:
 
         return blkdevice
 
+    def _required_tools_available(self) -> bool:
+        """Check if required cli tools are available.
+
+        Returns:
+            tuple: tuple of return bool and error message
+        """
+        tools = ["lsblk", "blkid", "mount"]
+        missing_tools = [tool for tool in tools if not shutil.which(tool)]
+
+        if missing_tools:
+            raise RuntimeError(f"Missing required tools: {' '.join(missing_tools)}")
+
+        return True
+
     def _blkinfo(self) -> dict:
         """Extract device and partition information using blkinfo.
 
@@ -139,7 +159,7 @@ class BlockDevice:
             # No partitions on this disk.
             return partitions
         for children in bd.get("children"):
-            partition = f"/dev/{children["name"]}"
+            partition = f"/dev/{children['name']}"
             if self._is_important_partition(children):
                 partitions.append(partition)
 
@@ -158,7 +178,7 @@ class BlockDevice:
         """
         if partition["size"] < self.min_partition_size:
             return False
-        fs_type = self._get_fstype(f"/dev/{partition["name"]}")
+        fs_type = self._get_fstype(f"/dev/{partition['name']}")
         if fs_type not in self.supported_fstypes:
             return False
 
