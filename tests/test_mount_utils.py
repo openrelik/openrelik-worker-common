@@ -107,6 +107,19 @@ class Utils(unittest.TestCase):
         bd.umount()
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
+    def test_MountWithQCOW2Partitions(self, mock_important):
+        mock_important.return_value = True
+
+        bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
+        bd.mountroot = self.mountroot
+        bd.mount()
+
+        for folder in bd.mountpoints:
+            self.assertFileExists(f"{folder}/testfile.txt")
+
+        bd.umount()
+
+    @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_MountWithNonExistingPartition(self, mock_important):
         mock_important.return_value = True
 
@@ -189,20 +202,32 @@ class Utils(unittest.TestCase):
     @patch("openrelik_worker_common.mount_utils.shutil.which")
     def test_RequiredToolsAvailable_no_tools_available(self, mock_which):
         mock_which.return_value = None
-        with self.assertRaisesRegex(
+        with self.assertRaises(
             RuntimeError,
-            "Missing required tools: lsblk blkid mount",
         ) as e:
             mount_utils.BlockDevice._required_tools_available(None)
+        self.assertEqual(
+            str(e.exception),
+            "Missing required tools: lsblk blkid mount qemu-nbd sudo partprobe",
+        )
 
     @patch("openrelik_worker_common.mount_utils.shutil.which")
     def test_RequiredToolsAvailable__some_tools_available(self, mock_which):
-        mock_which.side_effect = ["/path/to/lsblk", None, "/path/to/mount"]
-        with self.assertRaisesRegex(
+        mock_which.side_effect = [
+            "/path/to/lsblk",
+            None,
+            "/path/to/mount",
+            None,
+            None,
+            "/path/to/partprobe",
+        ]
+        with self.assertRaises(
             RuntimeError,
-            "Missing required tools: blkid",
         ) as e:
             mount_utils.BlockDevice._required_tools_available(None)
+        self.assertEqual(
+            str(e.exception), "Missing required tools: blkid qemu-nbd sudo"
+        )
 
     def tearDown(self):
         losetup_command = ["sudo", "losetup", "-D"]

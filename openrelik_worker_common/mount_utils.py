@@ -15,8 +15,10 @@
 import json
 import logging
 import os
+import pathlib
 import shutil
 import subprocess
+import time
 
 from uuid import uuid4
 
@@ -55,12 +57,18 @@ class BlockDevice:
         self.mountpoints = []
         self.mountroot = "/mnt"
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
+        self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
         # Check if required tools are available
         self._required_tools_available()
 
-        # Setup the loop device
-        self.blkdevice = self._losetup()
+        # Setup the block device
+        ext = pathlib.Path(self.image_path).suffix.strip(".")
+        if ext.lower() in self.supported_qcowtypes:
+            self._nbdsetup()
+            print(f"blockdevice: {self.blkdevice}")
+        else:
+            self.blkdevice = self._losetup()
 
         # Parse block device info
         self.blkdeviceinfo = self._blkinfo()
@@ -102,13 +110,75 @@ class BlockDevice:
 
         return blkdevice
 
+    def _get_free_nbd_device(self):
+        # TODO(hacktobeer) - implement (redis) locking for block devices!
+        self.blkdevice = "/dev/nbd0"
+
+    def _nbdsetup(self):
+        """Map QCOW image file to NBD device using qemu-nbd and probe partitions.
+
+        Returns:
+            str: block device created by qemu-nbd
+
+        Raises:
+            RuntimeError: if there was an error running qemu-nbd.
+        """
+        # Get and lock a free nbd device
+        self._get_free_nbd_device()
+        nbdsetup_command = [
+            "sudo",
+            "qemu-nbd",
+            # "--read-only",
+            "--connect",
+            self.blkdevice,
+            self.image_path,
+        ]
+
+        process = subprocess.run(
+            nbdsetup_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            logger.info(
+                f"qemu-nbd: success creating {self.blkdevice} for {self.image_path}"
+            )
+        else:
+            logger.error(
+                f"qemu-nbd: failed creating {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+            )
+            raise RuntimeError(f"Error: {process.stderr} {process.stdout}")
+
+        time.sleep(2)
+
+        # Probe partitions
+        partprobe_command = [
+            "sudo",
+            "fdisk",
+            "-l",
+            self.blkdevice.strip(),
+        ]
+
+        process = subprocess.run(
+            partprobe_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            logger.info(
+                f"partprobe: success probing {self.blkdevice} for {self.image_path}"
+            )
+        else:
+            logger.error(
+                f"partprobe: failed probing {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+            )
+            raise RuntimeError(
+                f"Error partprobe: failed probing: {process.stderr} {process.stdout}"
+            )
+
     def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
 
         Returns:
             tuple: tuple of return bool and error message
         """
-        tools = ["lsblk", "blkid", "mount"]
+        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo", "partprobe"]
         missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
         if missing_tools:
@@ -308,24 +378,26 @@ class BlockDevice:
             self.mountpoints.remove(mountpoint)
 
     def _detach_device(self):
-        """Cleanup loopmount devices for BlockDevice instance.
+        """Cleanup block devices for BlockDevice instance.
 
         Returns: None
 
         Raises:
-            RuntimeError: If there wa an error running losetup.
+            RuntimeError: If there was an error running losetup or qemu-nbd.
         """
-        losetup_command = ["sudo", "losetup", "--detach", self.blkdevice]
-        process = subprocess.run(
-            losetup_command, capture_output=True, check=False, text=True
-        )
+        if "nbd" in self.blkdevice:
+            command = ["sudo", "qemu-nbd", "--disconnect", self.blkdevice]
+        else:
+            command = ["sudo", "losetup", "--detach", self.blkdevice]
+
+        process = subprocess.run(command, capture_output=True, check=False, text=True)
         if process.returncode == 0:
             logger.info(f"Detached {self.blkdevice} succes!")
-            self.blkdevice = process.stdout.strip()
+            self.blkdevice = None
         else:
             logger.error(f"Detached {self.blkdevice} failed!")
             raise RuntimeError(
-                f"Error losetup detach: {process.stderr} {process.stdout}"
+                f"Error detaching block device: {process.stderr} {process.stdout}"
             )
 
     def umount(self):
