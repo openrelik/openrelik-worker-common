@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import os
+import shutil
 import subprocess
 import tempfile
 import threading
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def bruteforce_password_hashes(password_hashes, tmp_dir, timeout=300, extra_args=""):
     """Bruteforce password hashes using Hashcat or john.
@@ -32,7 +36,7 @@ def bruteforce_password_hashes(password_hashes, tmp_dir, timeout=300, extra_args
     Raises:
       RuntimeError if execution failed.
     """
-    print("Starting password hash bruteforce")
+    logger.info("Starting password hash bruteforce")
     password_hash_temp_file = tempfile.NamedTemporaryFile(delete=False, mode="w+", dir=tmp_dir)
     password_hashes_file_path = password_hash_temp_file.name
     password_hash_temp_file.write("\n".join(password_hashes))
@@ -57,6 +61,10 @@ def bruteforce_password_hashes(password_hashes, tmp_dir, timeout=300, extra_args
         password_rules_temp_file.write("\n".join([":", "d"]))
 
     if "$y$" in "".join(password_hashes):
+        if not shutil.which("john"):
+            password_hash_temp_file.close()
+            password_rules_temp_file.close()
+            raise RuntimeError("Trying to execute jtr but it's not installed")
         cmd = [
             "john",
             "--format=crypt",
@@ -65,6 +73,10 @@ def bruteforce_password_hashes(password_hashes, tmp_dir, timeout=300, extra_args
         ]
         pot_file = os.path.expanduser("~/.john/john.pot")
     else:
+        if not shutil.which("hashcat"):
+            password_hash_temp_file.close()
+            password_rules_temp_file.close()
+            raise RuntimeError("Trying to execute hashcat but it's not installed")
         # Ignore warnings & plain word list attack (with rules)
         cmd = ["hashcat", "--force", "-a", "0"]
         if extra_args:
@@ -72,6 +84,8 @@ def bruteforce_password_hashes(password_hashes, tmp_dir, timeout=300, extra_args
         cmd = cmd + [f"--potfile-path={pot_file}"]
         cmd = cmd + [password_hashes_file_path, password_list_file_path]
         cmd = cmd + ["-r", password_rules_file_path]
+
+    logger.info(f"Using command: {cmd}")
 
     password_hash_temp_file.close()
     password_rules_temp_file.close()
