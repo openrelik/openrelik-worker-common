@@ -60,6 +60,10 @@ class BlockDevice:
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
+        # Check if image_path exists
+        if not pathlib.Path.exists(pathlib.Path(image_path)):
+            raise RuntimeError(f"image_path does not exist: {image_path}")
+
         # Check if required tools are available
         self._required_tools_available()
 
@@ -145,9 +149,12 @@ class BlockDevice:
             logger.error(
                 f"qemu-nbd: failed creating {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
             )
-            raise RuntimeError(f"Error: {process.stderr} {process.stdout}")
+            raise RuntimeError(
+                f"Error running qemu-nbd: {process.stderr} {process.stdout}"
+            )
 
-        time.sleep(2)
+        # This sleep is needed for qemu-nbd to activate the nbd device
+        time.sleep(0.5)
 
         # Probe partitions
         partprobe_command = [

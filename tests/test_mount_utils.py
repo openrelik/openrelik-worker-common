@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO(hacktobeer) - rewrite assertraises
-
 import json
 import unittest
 import subprocess
@@ -60,10 +58,14 @@ class Utils(unittest.TestCase):
             mount_utils.BlockDevice("./test_data/image_vfat.img")
 
         mock_subprocess.return_value = subprocess.CompletedProcess(
-            args=[], stderr="device not found", returncode=1
+            args=[], stderr="device not found /dev/loop0", returncode=1
         )
-        with self.assertRaisesRegex(RuntimeError, "Error lsblk: device not found"):
+        with self.assertRaises(RuntimeError) as e:
             mount_utils.BlockDevice("./test_data/image_vfat.img")
+        self.assertEqual(
+            str(e.exception),
+            "Error lsblk: device not found /dev/loop0 None",
+        )
 
     def test_GetFsTypeVfat(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
@@ -75,16 +77,25 @@ class Utils(unittest.TestCase):
             t = bd._get_fstype(partition.strip())
             self.assertEqual(t, "ext4")
 
+    def test_GetFreeNbDevice(self):
+        device = mount_utils.BlockDevice._get_free_nbd_device(None)
+        self.assertEqual(device, "/dev/nbd0")
+
+    def test_NbdSetup(self):
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        self.assertEqual(bd.blkdevice, "/dev/loop0")
+
     def test_LoSetup(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
         self.assertEqual(bd.blkdevice, "/dev/loop0")
 
     def test_LoSetupFail(self):
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "Error: losetup: imagedoesnotexist: failed to set up loop device: No such file or directory",
-        ) as e:
+        with self.assertRaises(RuntimeError) as e:
             mount_utils.BlockDevice("imagedoesnotexist")
+        self.assertEqual(
+            str(e.exception),
+            "image_path does not exist: imagedoesnotexist",
+        )
 
     def test_MountNoPartitions(self):
         bd = mount_utils.BlockDevice("./test_data/image_without_partitions.img")
@@ -121,6 +132,21 @@ class Utils(unittest.TestCase):
 
         bd.umount()
 
+    @patch("openrelik_worker_common.mount_utils.subprocess.run")
+    @patch("openrelik_worker_common.mount_utils.pathlib.Path.exists")
+    def test_MountWithQCOW2Error(self, mock_pathlib, mock_subprocess):
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stdout="not a qcow file", returncode=1
+        )
+        mock_pathlib.returnvalue = True
+
+        with self.assertRaises(RuntimeError) as e:
+            mount_utils.BlockDevice("./test_data/nonexistent_qcow2_image.qcow2")
+        self.assertEqual(
+            str(e.exception),
+            "Error running qemu-nbd: None not a qcow file",
+        )
+
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_MountWithNonExistingPartition(self, mock_important):
         mock_important.return_value = True
@@ -128,10 +154,12 @@ class Utils(unittest.TestCase):
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
         bd.mountroot = self.mountroot
 
-        with self.assertRaisesRegex(
-            RuntimeError, "Error running mount: partition name /dev/loop0p999 not found"
-        ) as e:
+        with self.assertRaises(RuntimeError) as e:
             bd.mount(partition_name="/dev/loop0p999")
+        self.assertEqual(
+            str(e.exception),
+            "Error running mount: partition name /dev/loop0p999 not found",
+        )
 
         bd.umount()
 
@@ -154,10 +182,12 @@ class Utils(unittest.TestCase):
         bd.blkdevice = "/dev/doesnotexist"
         bd.partitions = ""
 
-        with self.assertRaisesRegex(
-            RuntimeError, "Error running blkid on /dev/doesnotexist"
-        ) as e:
+        with self.assertRaises(RuntimeError) as e:
             bd.mount()
+        self.assertEqual(
+            str(e.exception),
+            "Error running blkid on /dev/doesnotexist:  ",
+        )
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_ParsePartitionsEmpty(self, mock_important):
