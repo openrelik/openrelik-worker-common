@@ -66,7 +66,7 @@ class BlockDevice:
         # Setup the block device
         ext = pathlib.Path(self.image_path).suffix.strip(".")
         if ext.lower() in self.supported_qcowtypes:
-            self._nbdsetup()
+            self.blkdevice = self._nbdsetup()
             print(f"blockdevice: {self.blkdevice}")
         else:
             self.blkdevice = self._losetup()
@@ -113,7 +113,7 @@ class BlockDevice:
 
     def _get_free_nbd_device(self):
         # TODO(hacktobeer) - implement (redis) locking for block devices!
-        self.blkdevice = "/dev/nbd0"
+        return "/dev/nbd0"
 
     def _nbdsetup(self):
         """Map QCOW image file to NBD device using qemu-nbd and probe partitions.
@@ -125,13 +125,12 @@ class BlockDevice:
             RuntimeError: if there was an error running qemu-nbd.
         """
         # Get and lock a free nbd device
-        self._get_free_nbd_device()
+        blockdevice = self._get_free_nbd_device()
         nbdsetup_command = [
             "sudo",
             "qemu-nbd",
-            # "--read-only",
             "--connect",
-            self.blkdevice,
+            blockdevice,
             self.image_path,
         ]
 
@@ -155,7 +154,7 @@ class BlockDevice:
             "sudo",
             "fdisk",
             "-l",
-            self.blkdevice.strip(),
+            blockdevice.strip(),
         ]
 
         process = subprocess.run(
@@ -172,6 +171,8 @@ class BlockDevice:
             raise RuntimeError(
                 f"Error partprobe: failed probing: {process.stderr} {process.stdout}"
             )
+
+        return blockdevice
 
     def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
