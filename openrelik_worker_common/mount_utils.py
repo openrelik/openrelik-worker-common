@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class BlockDevice:
+    # TODO(hacktobeer) - add to class comment tool dependencies and explanations
     """BlockDevice provides functionality to map image files to block devices
     and mount them.
 
