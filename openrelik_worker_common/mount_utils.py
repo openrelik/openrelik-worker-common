@@ -313,10 +313,13 @@ class BlockDevice:
             )
 
         if partition_name:
+            # Mount the specific partition requested
             to_mount.append(partition_name)
         elif not self.partitions:
+            # No partitions found, mount the whole block device
             to_mount.append(self.blkdevice)
         elif self.partitions:
+            # Mount all detected partitions
             to_mount = self.partitions
 
         if not to_mount:
