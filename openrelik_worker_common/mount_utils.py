@@ -154,6 +154,11 @@ class BlockDevice:
             list[str]: a list of partitions
         """
         partitions = []
+        if "blockdevices" not in self.blkdeviceinfo:
+            raise RuntimeError("_parse_partitions: self.blkdeviceinfo malformed")
+        if len(self.blkdeviceinfo.get("blockdevices")) == 0:
+            logger.warning("_parse_partitions: blkdeviceinfo.blockdevices had 0 length")
+            return partitions
         bd = self.blkdeviceinfo.get("blockdevices")[0]
         if "children" not in bd:
             # No partitions on this disk.

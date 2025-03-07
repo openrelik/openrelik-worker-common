@@ -49,7 +49,7 @@ def get_input_files(
     if pipe_result:
         result_string = base64.b64decode(pipe_result.encode("utf-8")).decode("utf-8")
         result_dict = json.loads(result_string)
-        input_files = result_dict.get("output_files")
+        input_files = result_dict.get("output_files", [])
 
     if filter:
         input_files = filter_compatible_files(input_files, filter)

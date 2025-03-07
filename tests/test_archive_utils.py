@@ -114,6 +114,13 @@ class TestArchiveUtils(unittest.TestCase):
                 input_file, self.output_folder, self.log_file, self.file_filter
             )
 
+    def test_malformed_input_file(self):
+        input_file = {}
+
+        with self.assertRaises(RuntimeError):
+            extract_archive(
+                input_file, self.output_folder, self.log_file, self.file_filter
+            )
 
 if __name__ == "__main__":
     unittest.main()

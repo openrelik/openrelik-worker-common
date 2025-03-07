@@ -34,6 +34,9 @@ def extract_archive(
       command(string): The executed command string.
       export_folder: Root folder path to the unpacked archive.
     """
+    if "path" not in input_file or "display_name" not in input_file:
+        raise RuntimeError("input_file parameter malformed")
+
     input_path = input_file.get("path")
     input_filename = input_file.get("display_name")
 

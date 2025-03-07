@@ -172,7 +172,7 @@ def build_file_tree(
     if not files or not all(isinstance(file, OutputFile) for file in files):
         return None
 
-    tree_root = tempfile.TemporaryDirectory(dir=output_path, delete=False)
+    tree_root = tempfile.TemporaryDirectory(dir=output_path)
 
     for file in files:
         normalized_path = os.path.normpath(file.original_path)

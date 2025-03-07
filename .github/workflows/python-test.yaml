@@ -19,6 +19,7 @@ jobs:
       run: |
         pip install poetry
         poetry install --with test --no-root
+        sudo apt-get install john hashcat
     - name: Test with pytest - ${{ matrix.python-version }}
       run: |
         poetry run pytest --cov=. --cov-branch --cov-report=xml -v

@@ -123,7 +123,7 @@ class Utils(unittest.TestCase):
             ["/etc/../../../../ssh/sshd_config", "/ssh/sshd_config"],
         ]
         files: file_utils.OutputFile = []
-        output_path = tempfile.TemporaryDirectory(delete=False)
+        output_path = tempfile.TemporaryDirectory()
         for path in test_paths:
             file = file_utils.create_output_file(
                 output_base_path=output_path.name, original_path=path[0]
@@ -153,7 +153,7 @@ class Utils(unittest.TestCase):
         with self.assertRaises(TypeError):
             file_utils.delete_file_tree("not-a-temp-directory-object")
 
-        tmpdir = tempfile.TemporaryDirectory(delete=False)
+        tmpdir = tempfile.TemporaryDirectory()
         filepath = os.path.join(tmpdir.name, "testfile")
         open(filepath, "a", encoding="utf-8").close()
 
