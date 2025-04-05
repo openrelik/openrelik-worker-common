@@ -42,7 +42,7 @@ class BlockDevice:
 
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
     MAX_NBD_DEVICES = 10
-    LOCK_TIMEOUT_MILLISECONDS = 6 * 60 * 60 * 1000 # 6 hours
+    LOCK_TIMEOUT_MILLISECONDS = 6 * 60 * 60 * 1000  # 6 hours
 
     def __init__(
         self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE_BYTES
@@ -63,13 +63,15 @@ class BlockDevice:
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
-        self.REDIS_URL = os.getenv("REDIS_URL") or ["redis://localhost:6379/0", ]
+        self.REDIS_URL = os.getenv("REDIS_URL") or [
+            "redis://localhost:6379/0",
+        ]
         self.dlm = None
         self.redlock = None
 
     def setup(self):
         """Setup BlockDevice instance"""
-        
+
         # Check if image_path exists
         if not pathlib.Path.exists(pathlib.Path(self.image_path)):
             raise RuntimeError(f"image_path does not exist: {self.image_path}")
@@ -125,21 +127,25 @@ class BlockDevice:
         return blkdevice
 
     def _get_hostname(self):
-        """Return hostname from environment variable NODENAME. Can be used to get the hostname of
-        the node the container is running on or the OS hostname if empty.
+        """Return hostname from environment variable NODENAME or OS hostname. Can be used to
+        get the hostname of the node the container is running on or the OS hostname if empty.
 
         Returns:
             str: hostname of node or container.
         """
-        hostname = os.environ.get('NODENAME')
+        hostname = os.environ.get("NODENAME")
         if hostname == "":
             hostname - socket.gethostname()
-        
+
         return hostname
 
     def _get_redlockmanager(self):
         # return Redlock([{"host": self.REDIS_HOST, "port":self.REDIS_PORT, "db": 0}, ])
-        return Redlock([self.REDIS_URL, ])
+        return Redlock(
+            [
+                self.REDIS_URL,
+            ]
+        )
 
     def _get_free_nbd_device(self):
         """Find and lock free NBD device.
@@ -151,16 +157,18 @@ class BlockDevice:
             RuntimeError: if no free nbd device was found.
         """
         hostname = self._get_hostname()
-        for device_number in range(self.MAX_NBD_DEVICES+1):
+        for device_number in range(self.MAX_NBD_DEVICES + 1):
             devname = f"/dev/nbd{device_number}"
             self.dlm = self._get_redlockmanager()
-            lock = self.dlm.lock(f"{hostname}-{devname}", self.LOCK_TIMEOUT_MILLISECONDS)
+            lock = self.dlm.lock(
+                f"{hostname}-{devname}", self.LOCK_TIMEOUT_MILLISECONDS
+            )
             if lock:
                 self.redlock = lock
                 logger.info(f"Redlock succesfully set: {lock.resource}")
                 return devname
 
-        raise RuntimeError(f"Error locking NBD device: No free NBD devices found!")
+        raise RuntimeError("Error locking NBD device: No free NBD devices found!")
 
     def _nbdsetup(self):
         """Map QCOW image file to NBD device using qemu-nbd and probe partitions.
@@ -228,7 +236,7 @@ class BlockDevice:
     def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
 
-        Required tools can be installed on Debian by adding apt installing the 
+        Required tools can be installed on Debian by adding apt installing the
         following packages:
         * fdisk
         * qemu-utils
@@ -372,8 +380,8 @@ class BlockDevice:
             to_mount = self.partitions
 
         if not to_mount:
-            logger.error(f"Error: nothing to mount")
-            raise RuntimeError(f"Error: nothing to mount")
+            logger.error("Error: nothing to mount")
+            raise RuntimeError("Error: nothing to mount")
 
         for mounttarget in to_mount:
             logger.info(f"Trying to mount {mounttarget}")

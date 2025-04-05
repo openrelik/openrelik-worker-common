@@ -90,16 +90,22 @@ class Utils(unittest.TestCase):
     @patch("openrelik_worker_common.mount_utils.BlockDevice._get_hostname")
     @patch("openrelik_worker_common.mount_utils.Redlock")
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
-    def test_GetFreeNbDevice(self, mock_partition,  mock_redlock, mock_get_hostname):
+    def test_GetFreeNbDevice(self, mock_partition, mock_redlock, mock_get_hostname):
         mock_partition.return_value = True
-        mock_redlock.return_value = Redlock([self.redis_client,])
+        mock_redlock.return_value = Redlock(
+            [
+                self.redis_client,
+            ]
+        )
         mock_get_hostname.return_value = "random_host_name"
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
         bd.setup()
         self.assertEqual(bd.blkdevice, "/dev/nbd0")
         self.assertIsNotNone(bd.redlock)
-        self.assertEqual(self.redis_client.get("random_host_name-/dev/nbd0"),bd.redlock.key)
+        self.assertEqual(
+            self.redis_client.get("random_host_name-/dev/nbd0"), bd.redlock.key
+        )
 
     def test_NbdSetup(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
@@ -303,10 +309,11 @@ class Utils(unittest.TestCase):
         subprocess.run(losetup_command, capture_output=False, check=False)
         nbd_command = ["sudo", "qemu-nbd", "-d", "/dev/nbd0"]
         subprocess.run(nbd_command, capture_output=False, check=False)
-    
+
     @classmethod
     def tearDownClass(self):
         pass
+
 
 if __name__ == "__main__":
     unittest.main()
