@@ -154,7 +154,7 @@ class BlockDevice:
         )
 
     def _get_free_nbd_device(self):
-        """Find and lock free NBD device.
+        """Find and lock free NBD device until unlocked or timeout.
         NOTE: if running this in a container (e.g. Docker or k8s) the NBD device assignment is
         done in kernel space. This means that the locks need to done on the kernel namespace level and
         not on the container level. To make sure this works you need to set the environment variable
