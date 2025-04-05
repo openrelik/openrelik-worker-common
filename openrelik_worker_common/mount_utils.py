@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class BlockDevice:
-    """BlockDevice provides functionality to map an image file to block devices
+    """BlockDevice provides functionality to map an disk image file to block devices
     and mount them. The default minimum partition size that gets mounted is 100MB.
 
     Usage:
@@ -200,8 +200,8 @@ class BlockDevice:
         # This sleep is needed for qemu-nbd to activate the nbd device
         time.sleep(0.5)
 
-        # Probe partitions
-        partprobe_command = [
+        # Probe partitions with fdisk
+        fdisk_command = [
             "sudo",
             "fdisk",
             "-l",
@@ -209,18 +209,18 @@ class BlockDevice:
         ]
 
         process = subprocess.run(
-            partprobe_command, capture_output=True, check=False, text=True
+            fdisk_command, capture_output=True, check=False, text=True
         )
         if process.returncode == 0:
             logger.info(
-                f"partprobe: success probing {self.blkdevice} for {self.image_path}"
+                f"fdisk: success probing {self.blkdevice} for {self.image_path}"
             )
         else:
             logger.error(
-                f"partprobe: failed probing {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+                f"fdisk: failed probing {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
             )
             raise RuntimeError(
-                f"Error partprobe: failed probing: {process.stderr} {process.stdout}"
+                f"Error fdisk: failed probing: {process.stderr} {process.stdout}"
             )
 
         return self.blkdevice
@@ -230,14 +230,13 @@ class BlockDevice:
 
         Required tools can be installed on Debian by adding apt installing the 
         following packages:
-        * parted
         * fdisk
         * qemu-utils
 
         Returns:
             tuple: tuple of return bool and error message
         """
-        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo", "partprobe"]
+        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo"]
         missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
         if missing_tools:
