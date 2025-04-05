@@ -21,15 +21,15 @@ import socket
 import subprocess
 import time
 
-from uuid import uuid4
 from redlock import Redlock
+from uuid import uuid4
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class BlockDevice:
-    """BlockDevice provides functionality to map an disk image file to block devices
+    """BlockDevice provides functionality to map a disk image file to block devices
     and mount them. The default minimum partition size that gets mounted is 100MB.
     NOTE: If running in a container the container needs:
     * to be privileged (due to mounting)
@@ -73,7 +73,11 @@ class BlockDevice:
         self.redlock = None
 
     def setup(self):
-        """Setup BlockDevice instance"""
+        """Setup BlockDevice instance
+
+        The setup function will check if the required tools are available, setup the relevant
+        block device (loop or nbd) depending on image format and scan the paritions available.
+        """
 
         # Check if image_path exists
         if not pathlib.Path.exists(pathlib.Path(self.image_path)):
@@ -143,7 +147,6 @@ class BlockDevice:
         return hostname
 
     def _get_redlockmanager(self):
-        # return Redlock([{"host": self.REDIS_HOST, "port":self.REDIS_PORT, "db": 0}, ])
         return Redlock(
             [
                 self.REDIS_URL,
@@ -152,11 +155,11 @@ class BlockDevice:
 
     def _get_free_nbd_device(self):
         """Find and lock free NBD device.
-        NOTE: if running this in a container (e.g. Docker or k8s) the nbd device assignment is
-        done in kernel space. This means that the locks need to done on the Node level and not on the
-        container level. To make sure this works you need to set the environment variable NODENAME on
-        container startup to the name of the host the container runtime engine is running on. For k8s
-        that is the Node and for Docker that is the actual host the docker engine runs on.
+        NOTE: if running this in a container (e.g. Docker or k8s) the NBD device assignment is
+        done in kernel space. This means that the locks need to done on the kernel namespace level and
+        not on the container level. To make sure this works you need to set the environment variable
+        NODENAME on container startup to the name of the host the container runtime engine is running on.
+        For k8s that is the Node and for Docker that is the actual host the docker engine runs on.
 
         Returns:
             str: NBD device name
@@ -176,7 +179,7 @@ class BlockDevice:
                 logger.info(f"Redlock succesfully set: {lock.resource}")
                 return devname
 
-        raise RuntimeError("Error locking NBD device: No free NBD devices found!")
+        raise RuntimeError("Error getting free NBD device: All NBD devices locked!")
 
     def _nbdsetup(self):
         """Map QCOW image file to NBD device using qemu-nbd and probe partitions.
@@ -185,7 +188,7 @@ class BlockDevice:
             str: block device created by qemu-nbd
 
         Raises:
-            RuntimeError: if there was an error running qemu-nbd.
+            RuntimeError: if there was an error running qemu-nbd or fdisk.
         """
         # Get and lock a free nbd device
         self.blkdevice = self._get_free_nbd_device()
