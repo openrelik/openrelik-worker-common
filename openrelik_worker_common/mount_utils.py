@@ -21,7 +21,7 @@ import subprocess
 import time
 
 from uuid import uuid4
-
+from redlock import Redlock
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -60,6 +60,15 @@ class BlockDevice:
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
+        # NBD device handling constants
+        self.MAX_NBD_DEVICES = 10
+        self.LOCK_TIMEOUT_MILLISECONDS = 6 * 60 * 60 * 1000 # 6 hours
+        # TODO(hacktobeer) Re-use redis client from worker if possible!
+        self.REDIS_HOST = "localhost"
+        self.REDIS_PORT = 6379
+        self.dlm = None
+        self.redlock = None
+
         # Check if image_path exists
         if not pathlib.Path.exists(pathlib.Path(image_path)):
             raise RuntimeError(f"image_path does not exist: {image_path}")
@@ -71,7 +80,6 @@ class BlockDevice:
         ext = pathlib.Path(self.image_path).suffix.strip(".")
         if ext.lower() in self.supported_qcowtypes:
             self.blkdevice = self._nbdsetup()
-            print(f"blockdevice: {self.blkdevice}")
         else:
             self.blkdevice = self._losetup()
 
@@ -115,9 +123,42 @@ class BlockDevice:
 
         return blkdevice
 
+    def _get_hostname(self):
+        """Return hostname from environment variable NODENAME. Can be used to get the hostname of
+        the node the container is running on or the container hostname if empty.
+
+        Returns:
+            str: hostname of node or container.
+        """
+        # TODO(hacktobeer): make more robust with socket
+        hostname = os.environ.get('NODENAME')
+        if hostname == "":
+            hostname - os.environ.get('HOSTNAME')
+        
+        return hostname
+
+    def _get_redlockmanager(self):
+        return Redlock([{"host": self.REDIS_HOST, "port":self.REDIS_PORT, "db": 0}, ])
+    
     def _get_free_nbd_device(self):
-        # TODO(hacktobeer) - implement (redis) locking for block devices!
-        return "/dev/nbd0"
+        """Find and lock free NBD device.
+
+        Returns:
+            str: NBD device name
+
+        Raises:
+            RuntimeError: if no free nbd device was found.
+        """
+        hostname = self._get_hostname()
+        for device_number in range(self.MAX_NBD_DEVICES+1):
+            devname = f"/dev/nbd{device_number}"
+            self.dlm = self._get_redlockmanager()
+            lock = self.dlm.lock(f"{hostname}-{devname}", self.LOCK_TIMEOUT_MILLISECONDS)
+            if lock:
+                self.redlock = lock
+                return devname
+
+        raise RuntimeError(f"Error locking NBD device: No free NBD devices found!")
 
     def _nbdsetup(self):
         """Map QCOW image file to NBD device using qemu-nbd and probe partitions.
@@ -129,12 +170,13 @@ class BlockDevice:
             RuntimeError: if there was an error running qemu-nbd.
         """
         # Get and lock a free nbd device
-        blockdevice = self._get_free_nbd_device()
+        self.blkdevice = self._get_free_nbd_device()
         nbdsetup_command = [
             "sudo",
             "qemu-nbd",
+            "--read-only",
             "--connect",
-            blockdevice,
+            self.blkdevice,
             self.image_path,
         ]
 
@@ -161,7 +203,7 @@ class BlockDevice:
             "sudo",
             "fdisk",
             "-l",
-            blockdevice.strip(),
+            self.blkdevice.strip(),
         ]
 
         process = subprocess.run(
@@ -179,10 +221,16 @@ class BlockDevice:
                 f"Error partprobe: failed probing: {process.stderr} {process.stdout}"
             )
 
-        return blockdevice
+        return self.blkdevice
 
     def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
+
+        Required tools can be installed on Debian by adding apt installing the 
+        following packages:
+        * parted
+        * fdisk
+        * qemu-utils
 
         Returns:
             tuple: tuple of return bool and error message
@@ -415,3 +463,5 @@ class BlockDevice:
     def umount(self):
         self._umount_all()
         self._detach_device()
+        if self.redlock:
+            self.dlm.unlock(self.redlock)

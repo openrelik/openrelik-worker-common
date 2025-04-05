@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import unittest
 import subprocess
+from fakeredis import FakeStrictRedis
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from redlock import Redlock
+from unittest.mock import patch
 
 from openrelik_worker_common import mount_utils
 
@@ -25,6 +26,13 @@ class Utils(unittest.TestCase):
     """Test the mount utils functions."""
 
     mountroot = "./mnt"
+
+    redis_client = None
+
+    @classmethod
+    def setUpClass(self):
+        # Setup fake redis tcp server
+        self.redis_client = FakeStrictRedis(server_type="redis")
 
     def SetUp(self):
         pass
@@ -77,9 +85,18 @@ class Utils(unittest.TestCase):
             t = bd._get_fstype(partition.strip())
             self.assertEqual(t, "ext4")
 
-    def test_GetFreeNbDevice(self):
-        device = mount_utils.BlockDevice._get_free_nbd_device(None)
-        self.assertEqual(device, "/dev/nbd0")
+    @patch("openrelik_worker_common.mount_utils.BlockDevice._get_hostname")
+    @patch("openrelik_worker_common.mount_utils.Redlock")
+    @patch.object(mount_utils.BlockDevice, "_is_important_partition")
+    def test_GetFreeNbDevice(self, mock_partition,  mock_redlock, mock_get_hostname):
+        mock_partition.return_value = True
+        mock_redlock.return_value = Redlock([self.redis_client,])
+        mock_get_hostname.return_value = "random_host_name"
+
+        bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
+        self.assertEqual(bd.blkdevice, "/dev/nbd0")
+        self.assertIsNotNone(bd.redlock)
+        self.assertEqual(self.redis_client.get("random_host_name-/dev/nbd0"),bd.redlock.key)
 
     def test_NbdSetup(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
@@ -120,8 +137,10 @@ class Utils(unittest.TestCase):
         bd.umount()
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
-    def test_MountWithQCOW2Partitions(self, mock_important):
+    @patch.object(mount_utils.BlockDevice, "_get_free_nbd_device")
+    def test_MountWithQCOW2Partitions(self, mock_nbd, mock_important):
         mock_important.return_value = True
+        mock_nbd.return_value = "/dev/nbd0"
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
         bd.mountroot = self.mountroot
@@ -134,11 +153,13 @@ class Utils(unittest.TestCase):
 
     @patch("openrelik_worker_common.mount_utils.subprocess.run")
     @patch("openrelik_worker_common.mount_utils.pathlib.Path.exists")
-    def test_MountWithQCOW2Error(self, mock_pathlib, mock_subprocess):
+    @patch.object(mount_utils.BlockDevice, "_get_free_nbd_device")
+    def test_MountWithQCOW2Error(self, mock_nbd, mock_pathlib, mock_subprocess):
         mock_subprocess.return_value = subprocess.CompletedProcess(
             args=[], stdout="not a qcow file", returncode=1
         )
         mock_pathlib.returnvalue = True
+        mock_nbd.return_value = "/dev/nbd0"
 
         with self.assertRaises(RuntimeError) as e:
             mount_utils.BlockDevice("./test_data/nonexistent_qcow2_image.qcow2")
@@ -262,9 +283,15 @@ class Utils(unittest.TestCase):
         )
 
     def tearDown(self):
+        # Cleanup any left over loop/nbd devices
         losetup_command = ["sudo", "losetup", "-D"]
-        process = subprocess.run(losetup_command, capture_output=False, check=False)
-
+        subprocess.run(losetup_command, capture_output=False, check=False)
+        nbd_command = ["sudo", "qemu-nbd", "-d", "/dev/nbd0"]
+        subprocess.run(nbd_command, capture_output=False, check=False)
+    
+    @classmethod
+    def tearDownClass(self):
+        pass
 
 if __name__ == "__main__":
     unittest.main()
