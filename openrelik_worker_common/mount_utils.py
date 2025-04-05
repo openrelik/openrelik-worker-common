@@ -17,6 +17,7 @@ import logging
 import os
 import pathlib
 import shutil
+import socket
 import subprocess
 import time
 
@@ -28,18 +29,20 @@ logger = logging.getLogger(__name__)
 
 
 class BlockDevice:
-    # TODO(hacktobeer) - add to class comment tool dependencies and explanations
-    """BlockDevice provides functionality to map image files to block devices
-    and mount them.
+    """BlockDevice provides functionality to map an image file to block devices
+    and mount them. The default minimum partition size that gets mounted is 100MB.
 
     Usage:
         bd = BlockDevice('/folder/path_to_disk_image.dd')
+        bd.setup()
         mountpoints = bd.mount()
         # Do the things you need to do :)
         bd.umount()
     """
 
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
+    MAX_NBD_DEVICES = 10
+    LOCK_TIMEOUT_MILLISECONDS = 6 * 60 * 60 * 1000 # 6 hours
 
     def __init__(
         self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE_BYTES
@@ -60,18 +63,16 @@ class BlockDevice:
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
-        # NBD device handling constants
-        self.MAX_NBD_DEVICES = 10
-        self.LOCK_TIMEOUT_MILLISECONDS = 6 * 60 * 60 * 1000 # 6 hours
-        # TODO(hacktobeer) Re-use redis client from worker if possible!
-        self.REDIS_HOST = "localhost"
-        self.REDIS_PORT = 6379
+        self.REDIS_URL = os.getenv("REDIS_URL") or ["redis://localhost:6379/0", ]
         self.dlm = None
         self.redlock = None
 
+    def setup(self):
+        """Setup BlockDevice instance"""
+        
         # Check if image_path exists
-        if not pathlib.Path.exists(pathlib.Path(image_path)):
-            raise RuntimeError(f"image_path does not exist: {image_path}")
+        if not pathlib.Path.exists(pathlib.Path(self.image_path)):
+            raise RuntimeError(f"image_path does not exist: {self.image_path}")
 
         # Check if required tools are available
         self._required_tools_available()
@@ -125,21 +126,21 @@ class BlockDevice:
 
     def _get_hostname(self):
         """Return hostname from environment variable NODENAME. Can be used to get the hostname of
-        the node the container is running on or the container hostname if empty.
+        the node the container is running on or the OS hostname if empty.
 
         Returns:
             str: hostname of node or container.
         """
-        # TODO(hacktobeer): make more robust with socket
         hostname = os.environ.get('NODENAME')
         if hostname == "":
-            hostname - os.environ.get('HOSTNAME')
+            hostname - socket.gethostname()
         
         return hostname
 
     def _get_redlockmanager(self):
-        return Redlock([{"host": self.REDIS_HOST, "port":self.REDIS_PORT, "db": 0}, ])
-    
+        # return Redlock([{"host": self.REDIS_HOST, "port":self.REDIS_PORT, "db": 0}, ])
+        return Redlock([self.REDIS_URL, ])
+
     def _get_free_nbd_device(self):
         """Find and lock free NBD device.
 
@@ -156,6 +157,7 @@ class BlockDevice:
             lock = self.dlm.lock(f"{hostname}-{devname}", self.LOCK_TIMEOUT_MILLISECONDS)
             if lock:
                 self.redlock = lock
+                logger.info(f"Redlock succesfully set: {lock.resource}")
                 return devname
 
         raise RuntimeError(f"Error locking NBD device: No free NBD devices found!")

@@ -31,7 +31,7 @@ class Utils(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        # Setup fake redis tcp server
+        # Setup fake redis client
         self.redis_client = FakeStrictRedis(server_type="redis")
 
     def SetUp(self):
@@ -49,6 +49,7 @@ class Utils(unittest.TestCase):
 
     def test_BlkInfo(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.setup()
         self.assertEqual(
             str(bd.blkdeviceinfo),
             "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
@@ -63,13 +64,12 @@ class Utils(unittest.TestCase):
         )
 
         with self.assertRaises(RuntimeError):
-            mount_utils.BlockDevice("./test_data/image_vfat.img")
-
+            mount_utils.BlockDevice("./test_data/image_vfat.img").setup()
         mock_subprocess.return_value = subprocess.CompletedProcess(
             args=[], stderr="device not found /dev/loop0", returncode=1
         )
         with self.assertRaises(RuntimeError) as e:
-            mount_utils.BlockDevice("./test_data/image_vfat.img")
+            mount_utils.BlockDevice("./test_data/image_vfat.img").setup()
         self.assertEqual(
             str(e.exception),
             "Error lsblk: device not found /dev/loop0 None",
@@ -77,10 +77,12 @@ class Utils(unittest.TestCase):
 
     def test_GetFsTypeVfat(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.setup()
         self.assertEqual(bd._get_fstype(bd.blkdevice), "vfat")
 
     def test_GetFsTypeExt4MultiplePartitions(self):
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.setup()
         for partition in bd.partitions:
             t = bd._get_fstype(partition.strip())
             self.assertEqual(t, "ext4")
@@ -94,21 +96,24 @@ class Utils(unittest.TestCase):
         mock_get_hostname.return_value = "random_host_name"
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
+        bd.setup()
         self.assertEqual(bd.blkdevice, "/dev/nbd0")
         self.assertIsNotNone(bd.redlock)
         self.assertEqual(self.redis_client.get("random_host_name-/dev/nbd0"),bd.redlock.key)
 
     def test_NbdSetup(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.setup()
         self.assertEqual(bd.blkdevice, "/dev/loop0")
 
     def test_LoSetup(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.setup()
         self.assertEqual(bd.blkdevice, "/dev/loop0")
 
     def test_LoSetupFail(self):
         with self.assertRaises(RuntimeError) as e:
-            mount_utils.BlockDevice("imagedoesnotexist")
+            mount_utils.BlockDevice("imagedoesnotexist").setup()
         self.assertEqual(
             str(e.exception),
             "image_path does not exist: imagedoesnotexist",
@@ -116,6 +121,7 @@ class Utils(unittest.TestCase):
 
     def test_MountNoPartitions(self):
         bd = mount_utils.BlockDevice("./test_data/image_without_partitions.img")
+        bd.setup()
         bd.mountroot = self.mountroot
         bd.mount()
 
@@ -128,6 +134,7 @@ class Utils(unittest.TestCase):
         mock_important.return_value = True
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.setup()
         bd.mountroot = self.mountroot
         bd.mount()
 
@@ -143,6 +150,7 @@ class Utils(unittest.TestCase):
         mock_nbd.return_value = "/dev/nbd0"
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
+        bd.setup()
         bd.mountroot = self.mountroot
         bd.mount()
 
@@ -162,7 +170,7 @@ class Utils(unittest.TestCase):
         mock_nbd.return_value = "/dev/nbd0"
 
         with self.assertRaises(RuntimeError) as e:
-            mount_utils.BlockDevice("./test_data/nonexistent_qcow2_image.qcow2")
+            mount_utils.BlockDevice("./test_data/nonexistent_qcow2_image.qcow2").setup()
         self.assertEqual(
             str(e.exception),
             "Error running qemu-nbd: None not a qcow file",
@@ -173,6 +181,7 @@ class Utils(unittest.TestCase):
         mock_important.return_value = True
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.setup()
         bd.mountroot = self.mountroot
 
         with self.assertRaises(RuntimeError) as e:
@@ -189,6 +198,7 @@ class Utils(unittest.TestCase):
         mock_important.return_value = True
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.setup()
         bd.mountroot = self.mountroot
         bd.mount(partition_name="/dev/loop0p1")
 
@@ -199,6 +209,7 @@ class Utils(unittest.TestCase):
 
     def test_MountNothingTodo(self):
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.setup()
 
         bd.blkdevice = "/dev/doesnotexist"
         bd.partitions = ""
@@ -215,6 +226,7 @@ class Utils(unittest.TestCase):
         mock_important.return_value = True
 
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.setup()
         self.assertEqual(bd.partitions, [])
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
@@ -222,10 +234,12 @@ class Utils(unittest.TestCase):
         mock_important.return_value = True
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.img")
+        bd.setup()
         self.assertEqual(bd.partitions, ["/dev/loop0p1", "/dev/loop0p2"])
 
     def test_Umount(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.setup()
         bd.mountroot = self.mountroot
         bd.mount()
         mountpoints = bd.mountpoints.copy()
@@ -238,6 +252,7 @@ class Utils(unittest.TestCase):
     @patch.object(mount_utils.BlockDevice, "_get_fstype")
     def test_IsImportantPartition(self, mock_fstype):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.setup()
         partition = {"name": "loop0p1", "size": 1000000000}
 
         mock_fstype.return_value = "ext4"
