@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 class BlockDevice:
     """BlockDevice provides functionality to map an disk image file to block devices
     and mount them. The default minimum partition size that gets mounted is 100MB.
+    NOTE: If running in a container the container needs:
+    * to be privileged (due to mounting)
+    * needs access to /dev/loop* and /dev/nbd* devices
 
     Usage:
         bd = BlockDevice('/folder/path_to_disk_image.dd')
@@ -134,8 +137,8 @@ class BlockDevice:
             str: hostname of node or container.
         """
         hostname = os.environ.get("NODENAME")
-        if hostname == "":
-            hostname - socket.gethostname()
+        if not hostname:
+            hostname = socket.gethostname()
 
         return hostname
 
@@ -149,6 +152,11 @@ class BlockDevice:
 
     def _get_free_nbd_device(self):
         """Find and lock free NBD device.
+        NOTE: if running this in a container (e.g. Docker or k8s) the nbd device assignment is
+        done in kernel space. This means that the locks need to done on the Node level and not on the
+        container level. To make sure this works you need to set the environment variable NODENAME on
+        container startup to the name of the host the container runtime engine is running on. For k8s
+        that is the Node and for Docker that is the actual host the docker engine runs on.
 
         Returns:
             str: NBD device name

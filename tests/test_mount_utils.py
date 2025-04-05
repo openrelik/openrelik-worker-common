@@ -107,6 +107,18 @@ class Utils(unittest.TestCase):
             self.redis_client.get("random_host_name-/dev/nbd0"), bd.redlock.key
         )
 
+    @patch("openrelik_worker_common.mount_utils.socket.gethostname")
+    def test_GetHostNameSocket(self, mock_socket):
+        mock_socket.return_value = "myhostname"
+        hostname = mount_utils.BlockDevice._get_hostname(None)
+        self.assertEqual(hostname, "myhostname")
+
+    @patch("openrelik_worker_common.mount_utils.os.environ.get")
+    def test_GetHostNameENV(self, mock_env):
+        mock_env.return_value = "mynodename"
+        hostname = mount_utils.BlockDevice._get_hostname(None)
+        self.assertEqual(hostname, "mynodename")
+
     def test_NbdSetup(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
         bd.setup()
