@@ -30,9 +30,7 @@ def encode_dict_to_base64(dict_to_encode: dict) -> str:
     return base64.b64encode(json_string.encode("utf-8")).decode("utf-8")
 
 
-def get_input_files(
-    pipe_result: str, input_files: list[dict], filter: dict = None
-) -> list[dict]:
+def get_input_files(pipe_result: str, input_files: list[dict], filter: dict = None) -> list[dict]:
     """Prepares the input files for the task.
 
     Determines the appropriate input files by checking for results from a
@@ -62,6 +60,7 @@ def create_task_result(
     workflow_id: str,
     command: str = None,
     meta: dict = None,
+    task_logs: list[dict] = [],
     file_reports: list[dict] = [],
     task_report: dict = None,
 ) -> str:
@@ -72,6 +71,7 @@ def create_task_result(
         workflow_id: ID of the workflow.
         command: The command used to execute the task.
         meta: Additional metadata for the task (optional).
+        task_logs: List of task log file dictionaries.
         file_reports: List of file report dictionaries.
         task_report: A dictionary representing a task report.
 
@@ -83,6 +83,7 @@ def create_task_result(
         "workflow_id": workflow_id,
         "command": command,
         "meta": meta,
+        "task_logs": task_logs,
         "file_reports": file_reports,
         "task_report": task_report,
     }
