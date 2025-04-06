@@ -16,12 +16,12 @@ import json
 import logging
 import os
 import pathlib
+import redis
 import shutil
 import socket
 import subprocess
 import time
 
-from redlock import Redlock
 from uuid import uuid4
 
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +45,7 @@ class BlockDevice:
 
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
     MAX_NBD_DEVICES = 10
-    LOCK_TIMEOUT_MILLISECONDS = 6 * 60 * 60 * 1000  # 6 hours
+    LOCK_TIMEOUT_SECONDS = 6 * 60 * 60  # 6 hours
 
     def __init__(
         self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE_BYTES
@@ -69,8 +69,8 @@ class BlockDevice:
         self.REDIS_URL = os.getenv("REDIS_URL") or [
             "redis://localhost:6379/0",
         ]
-        self.dlm = None
-        self.redlock = None
+        self.redis_lock = None
+        self.redis_client = None
 
     def setup(self):
         """Setup BlockDevice instance
@@ -146,13 +146,6 @@ class BlockDevice:
 
         return hostname
 
-    def _get_redlockmanager(self):
-        return Redlock(
-            [
-                self.REDIS_URL,
-            ]
-        )
-
     def _get_free_nbd_device(self):
         """Find and lock free NBD device until unlocked or timeout.
         NOTE: if running this in a container (e.g. Docker or k8s) the NBD device assignment is
@@ -170,13 +163,17 @@ class BlockDevice:
         hostname = self._get_hostname()
         for device_number in range(self.MAX_NBD_DEVICES + 1):
             devname = f"/dev/nbd{device_number}"
-            self.dlm = self._get_redlockmanager()
-            lock = self.dlm.lock(
-                f"{hostname}-{devname}", self.LOCK_TIMEOUT_MILLISECONDS
+            self.redis_client = redis.Redis.from_url(self.REDIS_URL)
+            lock = self.redis_client.lock(
+                name=f"{hostname}-{devname}",
+                timeout=self.LOCK_TIMEOUT_SECONDS,
+                blocking=False,
             )
-            if lock:
-                self.redlock = lock
-                logger.info(f"Redlock succesfully set: {lock.resource}")
+            if lock.acquire():
+                self.redis_lock = lock
+                logger.info(
+                    f"Redis lock succesfully set: {lock.name} for {hostname}-{devname}"
+                )
                 return devname
 
         raise RuntimeError("Error getting free NBD device: All NBD devices locked!")
@@ -483,5 +480,5 @@ class BlockDevice:
     def umount(self):
         self._umount_all()
         self._detach_device()
-        if self.redlock:
-            self.dlm.unlock(self.redlock)
+        if self.redis_lock:
+            self.redis_lock.release()

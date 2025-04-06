@@ -16,7 +16,6 @@ import unittest
 import subprocess
 from fakeredis import FakeStrictRedis
 from pathlib import Path
-from redlock import Redlock
 from unittest.mock import patch
 
 from openrelik_worker_common import mount_utils
@@ -88,24 +87,24 @@ class Utils(unittest.TestCase):
             self.assertEqual(t, "ext4")
 
     @patch("openrelik_worker_common.mount_utils.BlockDevice._get_hostname")
-    @patch("openrelik_worker_common.mount_utils.Redlock")
+    @patch("openrelik_worker_common.mount_utils.redis.Redis.from_url")
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
-    def test_GetFreeNbDevice(self, mock_partition, mock_redlock, mock_get_hostname):
+    def test_GetFreeNbDevice(self, mock_partition, mock_redisclient, mock_get_hostname):
         mock_partition.return_value = True
-        mock_redlock.return_value = Redlock(
-            [
-                self.redis_client,
-            ]
-        )
+        mock_redisclient.return_value = self.redis_client
         mock_get_hostname.return_value = "random_host_name"
 
         bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
         bd.setup()
         self.assertEqual(bd.blkdevice, "/dev/nbd0")
-        self.assertIsNotNone(bd.redlock)
-        self.assertEqual(
-            self.redis_client.get("random_host_name-/dev/nbd0"), bd.redlock.key
-        )
+        self.assertIsNotNone(bd.redis_lock)
+        self.assertEqual(bd.redis_lock.name, "random_host_name-/dev/nbd0")
+
+        bd2 = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
+        bd2.setup()
+        self.assertEqual(bd2.blkdevice, "/dev/nbd1")
+        self.assertIsNotNone(bd2.redis_lock)
+        self.assertEqual(bd2.redis_lock.name, "random_host_name-/dev/nbd1")
 
     @patch("openrelik_worker_common.mount_utils.socket.gethostname")
     def test_GetHostNameSocket(self, mock_socket):
@@ -319,8 +318,14 @@ class Utils(unittest.TestCase):
         # Cleanup any left over loop/nbd devices
         losetup_command = ["sudo", "losetup", "-D"]
         subprocess.run(losetup_command, capture_output=False, check=False)
-        nbd_command = ["sudo", "qemu-nbd", "-d", "/dev/nbd0"]
-        subprocess.run(nbd_command, capture_output=False, check=False)
+        for dnr in range(11):
+            nbd_command = ["sudo", "qemu-nbd", "-d", f"/dev/nbd{dnr}"]
+            subprocess.run(
+                nbd_command,
+                capture_output=False,
+                check=False,
+                stdout=subprocess.DEVNULL,
+            )
 
     @classmethod
     def tearDownClass(self):
