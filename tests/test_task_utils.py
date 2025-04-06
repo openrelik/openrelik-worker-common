@@ -14,10 +14,8 @@
 
 import unittest
 import unittest.mock
-from pathlib import Path
 
-from openrelik_worker_common import task_utils
-from openrelik_worker_common import file_utils
+from openrelik_worker_common import file_utils, task_utils
 
 
 class Utils(unittest.TestCase):
@@ -55,6 +53,7 @@ class Utils(unittest.TestCase):
             "workflow_id": workflow_id,
             "command": command,
             "meta": meta,
+            "task_logs": [],
             "file_reports": [],
             "task_report": None,
         }
@@ -64,6 +63,7 @@ class Utils(unittest.TestCase):
             workflow_id=workflow_id,
             command=command,
             meta=meta,
+            task_logs=[],
             file_reports=[],
             task_report=None,
         )
