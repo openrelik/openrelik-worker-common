@@ -1,5 +1,7 @@
 import unittest
 
+from enum import Enum, StrEnum
+
 from openrelik_worker_common import data_types
 from openrelik_worker_common import task_utils
 
@@ -10,6 +12,12 @@ class TestDataTypes(unittest.TestCase):
     def test_datatype_str_comparision(self):
         """Test string comparison of data types."""
         self.assertEqual(data_types.DataType.DISK_IMAGE_QCOW, "file:diskimage:qcow")
+
+    def test_datatype_enum_comparision(self):
+        """Test enum comparison of data types."""
+        test_enum = data_types.DataType.DISK_IMAGE_QCOW
+        self.assertIsInstance(test_enum, Enum)
+        self.assertIsInstance(test_enum, StrEnum)
 
     def test_datatype_filtering(self):
         """Test glob comparision of data types."""
