@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openrelik-worker-common"
-version = "0.11.0"
+version = "0.12.0"
 description = "Common utilities for OpenRelik workers"
 authors = [
     "Johan Berggren <jberggren@gmail.com>",
