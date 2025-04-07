@@ -283,20 +283,6 @@ hiredis = ["hiredis (>=3.0.0)"]
 ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==23.2.1)", "requests (>=2.31.0)"]
 
 [[package]]
-name = "redlock-py"
-version = "1.0.8"
-description = "Redis locking mechanism"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "redlock-py-1.0.8.tar.gz", hash = "sha256:0b8722c4843ddeabc2fc1dd37c05859e0da29fbce3bd1f6ecc73c98396f139ac"},
-]
-
-[package.dependencies]
-redis = "*"
-
-[[package]]
 name = "sortedcontainers"
 version = "2.4.0"
 description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
@@ -367,4 +353,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "b9472a04d94a6875fe061604af3d5646d6d39684defd98a339b7ae50bc0acb39"
+content-hash = "a90c6e67645cfc000828ee00c0c5fc40c88469d83ccb69be9f57865facff3029"
