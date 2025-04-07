@@ -24,6 +24,6 @@ from enum import StrEnum
 
 
 class DataType(StrEnum):
-    DISK_IMAGE_QCOW = "file:diskimage:qcow"
-    DISK_IMAGE_RAW = "file:diskimage:raw"
+    FILE_DISKIMAGE_QCOW = "file:diskimage:qcow"
+    FILE_DISKIMAGE_RAW = "file:diskimage:raw"
     FILE_BINARY = "file:binary"
