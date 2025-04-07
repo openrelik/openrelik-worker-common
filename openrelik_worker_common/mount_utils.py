@@ -80,14 +80,15 @@ class BlockDevice:
         """
 
         # Check if image_path exists
-        if not pathlib.Path.exists(pathlib.Path(self.image_path)):
+        image_path = pathlib.Path(self.image_path)
+        if not pathlib.Path.exists(image_path):
             raise RuntimeError(f"image_path does not exist: {self.image_path}")
 
         # Check if required tools are available
         self._required_tools_available()
 
         # Setup the block device
-        ext = pathlib.Path(self.image_path).suffix.strip(".")
+        ext = image_path.suffix.strip(".")
         if ext.lower() in self.supported_qcowtypes:
             self.blkdevice = self._nbdsetup()
         else:
@@ -355,17 +356,14 @@ class BlockDevice:
                 f"Error running blkid on {devname}: {process.stderr} {process.stdout}"
             )
 
-    def mount(self, partition_name: str = ""):
-        """Mounts a disk or one or more partititions on a mountpoint.
+    def _select_partitions_to_mount(self, partition_name: str = "") -> list:
+        """Select partitions to mount.
 
         Args:
             partitions_name (str): Name of specific partition to mount.
 
         Returns:
-            list: A list of paths the disk/partitions have been mounted on.
-
-        Raises:
-          RuntimeError: If there as an error running mount.
+            list: A list of partitions to mount.
         """
         to_mount = []
 
@@ -387,9 +385,21 @@ class BlockDevice:
             # Mount all detected partitions
             to_mount = self.partitions
 
-        if not to_mount:
-            logger.error("Error: nothing to mount")
-            raise RuntimeError("Error: nothing to mount")
+        return to_mount
+
+    def mount(self, partition_name: str = ""):
+        """Mounts a disk or one or more partititions on a mountpoint.
+
+        Args:
+            partitions_name (str): Name of specific partition to mount.
+
+        Returns:
+            list: A list of paths the disk/partitions have been mounted on.
+
+        Raises:
+          RuntimeError: If there as an error running mount.
+        """
+        to_mount = self._select_partitions_to_mount(partition_name)
 
         for mounttarget in to_mount:
             logger.info(f"Trying to mount {mounttarget}")

@@ -16,7 +16,7 @@ import unittest
 import subprocess
 from fakeredis import FakeStrictRedis
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from openrelik_worker_common import mount_utils
 
@@ -61,9 +61,9 @@ class Utils(unittest.TestCase):
         mock_subprocess.return_value = subprocess.CompletedProcess(
             args=[], stdout="this is not valid JSON", returncode=0
         )
-
         with self.assertRaises(RuntimeError):
             mount_utils.BlockDevice("./test_data/image_vfat.img").setup()
+
         mock_subprocess.return_value = subprocess.CompletedProcess(
             args=[], stderr="device not found /dev/loop0", returncode=1
         )
@@ -105,6 +105,36 @@ class Utils(unittest.TestCase):
         self.assertEqual(bd2.blkdevice, "/dev/nbd1")
         self.assertIsNotNone(bd2.redis_lock)
         self.assertEqual(bd2.redis_lock.name, "random_host_name-/dev/nbd1")
+
+    @patch("openrelik_worker_common.mount_utils.BlockDevice._get_hostname")
+    @patch("openrelik_worker_common.mount_utils.redis.Redis.from_url")
+    @patch.object(mount_utils.BlockDevice, "_is_important_partition")
+    # @patch("openrelik_worker_common.mount_utils.redis.Redis.lock.acquire")
+    def test_GetFreeNbDeviceNoDevicesAvailable(
+        self, mock_partition, mock_redisclient, mock_get_hostname
+    ):
+        mock_partition.return_value = True
+        mock_redisclient.return_value = self.redis_client
+        mock_get_hostname.return_value = "random_host_name"
+        # mock_lock.return_value = False
+
+        # lock all devices
+        for device_number in range(mount_utils.BlockDevice.MAX_NBD_DEVICES + 1):
+            devname = f"/dev/nbd{device_number}"
+            lock = self.redis_client.lock(
+                name=f"random_host_name-{devname}",
+                timeout=mount_utils.BlockDevice.LOCK_TIMEOUT_SECONDS,
+                blocking=False,
+            )
+            lock.acquire()
+
+        with self.assertRaises(RuntimeError) as e:
+            bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
+            bd.setup()
+        self.assertEqual(
+            str(e.exception),
+            "Error getting free NBD device: All NBD devices locked!",
+        )
 
     @patch("openrelik_worker_common.mount_utils.socket.gethostname")
     def test_GetHostNameSocket(self, mock_socket):
@@ -254,6 +284,20 @@ class Utils(unittest.TestCase):
         bd.setup()
         self.assertEqual(bd.partitions, ["/dev/loop0p1", "/dev/loop0p2"])
 
+    @patch("openrelik_worker_common.mount_utils.subprocess.run")
+    def test_DetachDevice(self, mock_subprocess):
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stdout="Device does not exist", stderr="", returncode=1
+        )
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.blkdevice = "/dev/nbd0"
+        with self.assertRaises(RuntimeError) as e:
+            bd._detach_device()
+        self.assertEqual(
+            str(e.exception),
+            "Error detaching block device:  Device does not exist",
+        )
+
     def test_Umount(self):
         bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
         bd.setup()
@@ -265,6 +309,21 @@ class Utils(unittest.TestCase):
         self.assertEqual(bd.mountpoints, [])
         for folder in mountpoints:
             self.assertFileDoesNotExists(folder)
+
+    @patch("openrelik_worker_common.mount_utils.subprocess.run")
+    def test_UmountFail(self, mock_subprocess):
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stdout="", stderr="umount failed.", returncode=1
+        )
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.mountpoints = ["/mnt/folder"]
+
+        with self.assertRaises(RuntimeError) as e:
+            bd._umount_all()
+        self.assertEqual(
+            str(e.exception),
+            "Error running umount on /mnt/folder: umount failed. ",
+        )
 
     @patch.object(mount_utils.BlockDevice, "_get_fstype")
     def test_IsImportantPartition(self, mock_fstype):
