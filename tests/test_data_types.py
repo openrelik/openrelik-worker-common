@@ -42,6 +42,10 @@ class TestDataTypes(unittest.TestCase):
         compatible = task_utils.filter_compatible_files(input_files, filter_dict)
         self.assertEqual(len(compatible), 1)
 
+        filter_dict = {"data_types": [f"*:{data_types.DataType.DISK_IMAGE_QCOW}"]}
+        compatible = task_utils.filter_compatible_files(input_files, filter_dict)
+        self.assertEqual(len(compatible), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
