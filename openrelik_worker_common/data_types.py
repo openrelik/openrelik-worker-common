@@ -11,7 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""OpenRelik data types."""
+"""OpenRelik data types
+
+This file defines the OpenRelik data types that can be used for input and
+output files. The data types are defines as StrEnums which takes care of
+the interoparability between code and database. This also makes sure we can
+use both Enum based comparision and string based glob filtering.
+"""
 
 from enum import StrEnum
 

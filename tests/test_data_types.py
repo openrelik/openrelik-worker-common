@@ -5,10 +5,14 @@ from openrelik_worker_common import task_utils
 
 
 class TestDataTypes(unittest.TestCase):
+    """Test the OpenRelik data types."""
+
     def test_datatype_str_comparision(self):
+        """Test string comparison of data types."""
         self.assertEqual(data_types.DataType.DISK_IMAGE_QCOW, "file:diskimage:qcow")
 
     def test_datatype_filtering(self):
+        """Test glob comparision of data types."""
         input_files = [
             {"name": "testfile.qcow", "data_type": "container_explorer:file:disk:qcow"},
             {"name": "testfile.bin", "data_type": "hayabusa:file:binary"},
