@@ -16,7 +16,7 @@ import unittest
 import subprocess
 from fakeredis import FakeStrictRedis
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from openrelik_worker_common import mount_utils
 
