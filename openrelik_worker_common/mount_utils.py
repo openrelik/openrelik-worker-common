@@ -66,11 +66,9 @@ class BlockDevice:
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
-        self.REDIS_URL = os.getenv("REDIS_URL") or [
-            "redis://localhost:6379/0",
-        ]
-        self.redis_lock = None
+        self.REDIS_URL = os.getenv("REDIS_URL") or "redis://localhost:6379/0"
         self.redis_client = None
+        self.redis_lock = None
 
     def setup(self):
         """Setup BlockDevice instance
@@ -90,6 +88,7 @@ class BlockDevice:
         # Setup the block device
         ext = image_path.suffix.strip(".")
         if ext.lower() in self.supported_qcowtypes:
+            self.redis_client = redis.Redis.from_url(self.REDIS_URL)
             self.blkdevice = self._nbdsetup()
         else:
             self.blkdevice = self._losetup()
@@ -164,7 +163,6 @@ class BlockDevice:
         hostname = self._get_hostname()
         for device_number in range(self.MAX_NBD_DEVICES + 1):
             devname = f"/dev/nbd{device_number}"
-            self.redis_client = redis.Redis.from_url(self.REDIS_URL)
             lock = self.redis_client.lock(
                 name=f"{hostname}-{devname}",
                 timeout=self.LOCK_TIMEOUT_SECONDS,
@@ -215,7 +213,7 @@ class BlockDevice:
             )
 
         # This sleep is needed for qemu-nbd to activate the nbd device
-        time.sleep(0.5)
+        time.sleep(0.2)
 
         # Probe partitions with fdisk
         fdisk_command = [
