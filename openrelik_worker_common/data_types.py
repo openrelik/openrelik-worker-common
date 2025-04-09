@@ -15,15 +15,15 @@
 
 This file defines the OpenRelik data types that can be used for input and
 output files. The data types are defined as StrEnums which takes care of
-the interoparability between code and database through string comparision 
-instead of forcing Enum object comparision. This also makes sure we can
-use both Enum based comparision and string based glob filtering.
+the interoperability between code and database through string comparison 
+instead of forcing Enum object comparison. This also makes sure we can
+use both Enum based comparison and string based glob filtering.
 """
 
 from enum import StrEnum
 
 
 class DataType(StrEnum):
-    FILE_DISKIMAGE_QCOW = "file:diskimage:qcow"
-    FILE_DISKIMAGE_RAW = "file:diskimage:raw"
-    FILE_BINARY = "file:binary"
+    DISKIMAGE_QCOW = "diskimage:qcow"
+    DISKIMAGE_RAW = "diskimage:raw"
+    BINARY = "binary"
