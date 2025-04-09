@@ -109,14 +109,12 @@ class Utils(unittest.TestCase):
     @patch("openrelik_worker_common.mount_utils.BlockDevice._get_hostname")
     @patch("openrelik_worker_common.mount_utils.redis.Redis.from_url")
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
-    # @patch("openrelik_worker_common.mount_utils.redis.Redis.lock.acquire")
     def test_GetFreeNbDeviceNoDevicesAvailable(
         self, mock_partition, mock_redisclient, mock_get_hostname
     ):
         mock_partition.return_value = True
         mock_redisclient.return_value = self.redis_client
         mock_get_hostname.return_value = "random_host_name"
-        # mock_lock.return_value = False
 
         # lock all devices
         for device_number in range(mount_utils.BlockDevice.MAX_NBD_DEVICES + 1):
