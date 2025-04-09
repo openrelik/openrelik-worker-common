@@ -99,12 +99,24 @@ class Utils(unittest.TestCase):
         self.assertEqual(bd.blkdevice, "/dev/nbd0")
         self.assertIsNotNone(bd.redis_lock)
         self.assertEqual(bd.redis_lock.name, "random_host_name-/dev/nbd0")
+        self.assertEqual(
+            bd.redis_client.get("random_host_name-/dev/nbd0"), bd.redis_lock.local.token
+        )
 
         bd2 = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
         bd2.setup()
         self.assertEqual(bd2.blkdevice, "/dev/nbd1")
         self.assertIsNotNone(bd2.redis_lock)
         self.assertEqual(bd2.redis_lock.name, "random_host_name-/dev/nbd1")
+        self.assertEqual(
+            bd2.redis_client.get("random_host_name-/dev/nbd1"),
+            bd2.redis_lock.local.token,
+        )
+
+        bd.redis_lock.release()
+        self.assertIsNone(bd.redis_client.get("random_host_name-/dev/nbd0"))
+        bd2.redis_lock.release()
+        self.assertIsNone(bd2.redis_client.get("random_host_name-/dev/nbd1"))
 
     @patch("openrelik_worker_common.mount_utils.BlockDevice._get_hostname")
     @patch("openrelik_worker_common.mount_utils.redis.Redis.from_url")
