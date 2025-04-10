@@ -15,28 +15,37 @@
 import json
 import logging
 import os
+import pathlib
+import redis
 import shutil
+import socket
 import subprocess
+import time
 
 from uuid import uuid4
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class BlockDevice:
-    """BlockDevice provides functionality to map image files to block devices
-    and mount them.
+    """BlockDevice provides functionality to map a disk image file to block devices
+    and mount them. The default minimum partition size that gets mounted is 100MB.
+    NOTE: If running in a container the container needs:
+    * to be privileged (due to mounting)
+    * needs access to /dev/loop* and /dev/nbd* devices
 
     Usage:
         bd = BlockDevice('/folder/path_to_disk_image.dd')
+        bd.setup()
         mountpoints = bd.mount()
         # Do the things you need to do :)
         bd.umount()
     """
 
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
+    MAX_NBD_DEVICES = 10
+    LOCK_TIMEOUT_SECONDS = 6 * 60 * 60  # 6 hours
 
     def __init__(
         self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE_BYTES
@@ -55,12 +64,34 @@ class BlockDevice:
         self.mountpoints = []
         self.mountroot = "/mnt"
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
+        self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
+
+        self.REDIS_URL = os.getenv("REDIS_URL") or "redis://localhost:6379/0"
+        self.redis_client = None
+        self.redis_lock = None
+
+    def setup(self):
+        """Setup BlockDevice instance
+
+        The setup function will check if the required tools are available, setup the relevant
+        block device (loop or nbd) depending on image format and scan the paritions available.
+        """
+
+        # Check if image_path exists
+        image_path = pathlib.Path(self.image_path)
+        if not pathlib.Path.exists(image_path):
+            raise RuntimeError(f"image_path does not exist: {self.image_path}")
 
         # Check if required tools are available
         self._required_tools_available()
 
-        # Setup the loop device
-        self.blkdevice = self._losetup()
+        # Setup the block device
+        ext = image_path.suffix.strip(".")
+        if ext.lower() in self.supported_qcowtypes:
+            self.redis_client = redis.Redis.from_url(self.REDIS_URL)
+            self.blkdevice = self._nbdsetup()
+        else:
+            self.blkdevice = self._losetup()
 
         # Parse block device info
         self.blkdeviceinfo = self._blkinfo()
@@ -102,13 +133,125 @@ class BlockDevice:
 
         return blkdevice
 
+    def _get_hostname(self):
+        """Return hostname from environment variable NODENAME or OS hostname. Can be used to
+        get the hostname of the node the container is running on or the OS hostname if empty.
+
+        Returns:
+            str: hostname of node or container.
+        """
+        hostname = os.environ.get("NODENAME")
+        if not hostname:
+            hostname = socket.gethostname()
+
+        return hostname
+
+    def _get_free_nbd_device(self):
+        """Find and lock free NBD device until unlocked or timeout.
+        NOTE: if running this in a container (e.g. Docker or k8s) the NBD device assignment is
+        done in kernel space. This means that the locks need to done on the kernel namespace level and
+        not on the container level. To make sure this works you need to set the environment variable
+        NODENAME on container startup to the name of the host the container runtime engine is running on.
+        For k8s that is the Node and for Docker that is the actual host the docker engine runs on.
+
+        Returns:
+            str: NBD device name
+
+        Raises:
+            RuntimeError: if no free nbd device was found.
+        """
+        hostname = self._get_hostname()
+        for device_number in range(self.MAX_NBD_DEVICES + 1):
+            devname = f"/dev/nbd{device_number}"
+            lock = self.redis_client.lock(
+                name=f"{hostname}-{devname}",
+                timeout=self.LOCK_TIMEOUT_SECONDS,
+                blocking=False,
+            )
+            if lock.acquire():
+                self.redis_lock = lock
+                logger.info(
+                    f"Redis lock succesfully set: {lock.name} for {hostname}-{devname}"
+                )
+                return devname
+
+        raise RuntimeError("Error getting free NBD device: All NBD devices locked!")
+
+    def _nbdsetup(self):
+        """Map QCOW image file to NBD device using qemu-nbd and probe partitions.
+
+        Returns:
+            str: block device created by qemu-nbd
+
+        Raises:
+            RuntimeError: if there was an error running qemu-nbd or fdisk.
+        """
+        # Get and lock a free nbd device
+        self.blkdevice = self._get_free_nbd_device()
+        nbdsetup_command = [
+            "sudo",
+            "qemu-nbd",
+            "--read-only",
+            "--connect",
+            self.blkdevice,
+            self.image_path,
+        ]
+
+        process = subprocess.run(
+            nbdsetup_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            logger.info(
+                f"qemu-nbd: success creating {self.blkdevice} for {self.image_path}"
+            )
+        else:
+            logger.error(
+                f"qemu-nbd: failed creating {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+            )
+            raise RuntimeError(
+                f"Error running qemu-nbd: {process.stderr} {process.stdout}"
+            )
+
+        # This sleep is needed for qemu-nbd to activate the nbd device
+        time.sleep(0.2)
+
+        # Probe partitions with fdisk
+        fdisk_command = [
+            "sudo",
+            "fdisk",
+            "-l",
+            self.blkdevice.strip(),
+        ]
+
+        process = subprocess.run(
+            fdisk_command, capture_output=True, check=False, text=True
+        )
+        if process.returncode == 0:
+            logger.info(
+                f"fdisk: success probing {self.blkdevice} for {self.image_path}"
+            )
+        else:
+            logger.error(
+                f"fdisk: failed probing {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+            )
+            raise RuntimeError(
+                f"Error fdisk: failed probing: {process.stderr} {process.stdout}"
+            )
+
+        return self.blkdevice
+
     def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
+
+        Required tools can be installed on Debian by adding apt installing the
+        following packages:
+        * fdisk
+        * qemu-utils
 
         Returns:
             tuple: tuple of return bool and error message
         """
-        tools = ["lsblk", "blkid", "mount"]
+        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo"]
         missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
         if missing_tools:
@@ -216,17 +359,14 @@ class BlockDevice:
                 f"Error running blkid on {devname}: {process.stderr} {process.stdout}"
             )
 
-    def mount(self, partition_name: str = ""):
-        """Mounts a disk or one or more partititions on a mountpoint.
+    def _select_partitions_to_mount(self, partition_name: str = "") -> list:
+        """Select partitions to mount.
 
         Args:
             partitions_name (str): Name of specific partition to mount.
 
         Returns:
-            list: A list of paths the disk/partitions have been mounted on.
-
-        Raises:
-          RuntimeError: If there as an error running mount.
+            list: A list of partitions to mount.
         """
         to_mount = []
 
@@ -239,15 +379,30 @@ class BlockDevice:
             )
 
         if partition_name:
+            # Mount the specific partition requested
             to_mount.append(partition_name)
         elif not self.partitions:
+            # No partitions found, mount the whole block device
             to_mount.append(self.blkdevice)
         elif self.partitions:
+            # Mount all detected partitions
             to_mount = self.partitions
 
-        if not to_mount:
-            logger.error(f"Error: nothing to mount")
-            raise RuntimeError(f"Error: nothing to mount")
+        return to_mount
+
+    def mount(self, partition_name: str = ""):
+        """Mounts a disk or one or more partititions on a mountpoint.
+
+        Args:
+            partitions_name (str): Name of specific partition to mount.
+
+        Returns:
+            list: A list of paths the disk/partitions have been mounted on.
+
+        Raises:
+          RuntimeError: If there as an error running mount.
+        """
+        to_mount = self._select_partitions_to_mount(partition_name)
 
         for mounttarget in to_mount:
             logger.info(f"Trying to mount {mounttarget}")
@@ -313,26 +468,30 @@ class BlockDevice:
             self.mountpoints.remove(mountpoint)
 
     def _detach_device(self):
-        """Cleanup loopmount devices for BlockDevice instance.
+        """Cleanup block devices for BlockDevice instance.
 
         Returns: None
 
         Raises:
-            RuntimeError: If there wa an error running losetup.
+            RuntimeError: If there was an error running losetup or qemu-nbd.
         """
-        losetup_command = ["sudo", "losetup", "--detach", self.blkdevice]
-        process = subprocess.run(
-            losetup_command, capture_output=True, check=False, text=True
-        )
+        if "nbd" in self.blkdevice:
+            command = ["sudo", "qemu-nbd", "--disconnect", self.blkdevice]
+        else:
+            command = ["sudo", "losetup", "--detach", self.blkdevice]
+
+        process = subprocess.run(command, capture_output=True, check=False, text=True)
         if process.returncode == 0:
             logger.info(f"Detached {self.blkdevice} succes!")
-            self.blkdevice = process.stdout.strip()
+            self.blkdevice = None
         else:
             logger.error(f"Detached {self.blkdevice} failed!")
             raise RuntimeError(
-                f"Error losetup detach: {process.stderr} {process.stdout}"
+                f"Error detaching block device: {process.stderr} {process.stdout}"
             )
 
     def umount(self):
         self._umount_all()
         self._detach_device()
+        if self.redis_lock:
+            self.redis_lock.release()
