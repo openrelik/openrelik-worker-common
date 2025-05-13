@@ -383,6 +383,35 @@ class Utils(unittest.TestCase):
             str(e.exception), "Missing required tools: blkid qemu-nbd sudo"
         )
 
+    def test_GetMountPath_default(self):
+        bd = mount_utils.BlockDevice(
+            "./test_data/image_vfat.img", max_mountpath_size=10
+        )
+        bd.mountroot = "/mnt"  # length = 4
+        mountpath = bd._get_mount_path()
+
+        self.assertEqual(len(mountpath), 10)  # path == "/mnt/{uuid}", length == 10
+
+    def test_GetMountPath_max(self):
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        bd.mountroot = "/mnt"  # length = 4
+        mountpath = bd._get_mount_path()
+
+        self.assertEqual(len(mountpath), 37)  # path == "/mnt/{uuid}", length == 37
+
+    def test_GetMountPath_error(self):
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img", max_mountpath_size=5)
+        bd.mountroot = "/mnt"  # length = 4
+
+        with self.assertRaises(
+            RuntimeError,
+        ) as e:
+            bd._get_mount_path()
+        self.assertEqual(
+            str(e.exception),
+            "Error generating mount path: the max_mount_path size (5) is too short, please choose a larger maximum mountpath size, minimum is self.mountroot + 1",
+        )
+
     def tearDown(self):
         # Cleanup any left over loop/nbd devices
         losetup_command = ["sudo", "losetup", "-D"]

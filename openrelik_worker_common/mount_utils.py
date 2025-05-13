@@ -46,15 +46,20 @@ class BlockDevice:
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
     MAX_NBD_DEVICES = 10
     LOCK_TIMEOUT_SECONDS = 6 * 60 * 60  # 6 hours
+    MAX_MOUNTPATH_SIZE = 500
 
     def __init__(
-        self, image_path: str, min_partition_size: int = MIN_PARTITION_SIZE_BYTES
+        self,
+        image_path: str,
+        min_partition_size: int = MIN_PARTITION_SIZE_BYTES,
+        max_mountpath_size: int = MAX_MOUNTPATH_SIZE,
     ):
         """Initialize BlockDevice class instance.
 
         Args:
             image_path (str): path to the image file to map and mount.
             min_partition_size (int): minimum partition size, default MIN_PARTITION_SIZE_BYTES
+            max_mountpath_size (int): maximum root mount path length, default MAX_MOUNTPATH_SIZE
         """
         self.image_path = image_path
         self.min_partition_size = min_partition_size
@@ -63,6 +68,7 @@ class BlockDevice:
         self.partitions = []
         self.mountpoints = []
         self.mountroot = "/mnt"
+        self.max_mountpath_size = max_mountpath_size
         self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
@@ -390,6 +396,26 @@ class BlockDevice:
 
         return to_mount
 
+    def _get_mount_path(self):
+        """Generates a mount path using max_mountpath_size.
+
+        Returns:
+            str: The generated mount path.
+        """
+        if (
+            self.max_mountpath_size <= len(self.mountroot) + 1
+        ):  # as we add a "/" in between root and the uuid part
+            raise RuntimeError(
+                f"Error generating mount path: the max_mount_path size ({self.max_mountpath_size}) is too short, please choose a larger maximum mountpath size, minimum is self.mountroot + 1"
+            )
+
+        max_uuid_size = (
+            self.max_mountpath_size - len(self.mountroot) - 1
+        )  # as we add a "/" in between root and the uuid part
+        uuid_path_part = uuid4().hex[:max_uuid_size]
+
+        return f"{self.mountroot}/{uuid_path_part}"
+
     def mount(self, partition_name: str = ""):
         """Mounts a disk or one or more partititions on a mountpoint.
 
@@ -417,7 +443,7 @@ class BlockDevice:
 
             mount_command.append(mounttarget)
 
-            mount_folder = f"{self.mountroot}/{uuid4().hex}"
+            mount_folder = self._get_mount_path()
             os.makedirs(mount_folder)
 
             mount_command.append(mount_folder)
