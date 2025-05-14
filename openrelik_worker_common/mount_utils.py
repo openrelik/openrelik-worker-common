@@ -396,11 +396,14 @@ class BlockDevice:
 
         return to_mount
 
-    def _get_mount_path(self):
+    def _get_mount_path(self) -> str:
         """Generates a mount path using max_mountpath_size.
 
         Returns:
             str: The generated mount path.
+
+        Raises:
+          RuntimeError: If the max_mountpath_size is too small.
         """
         if (
             self.max_mountpath_size <= len(self.mountroot) + 1
