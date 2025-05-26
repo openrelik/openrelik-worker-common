@@ -36,7 +36,7 @@ class BlockDevice:
     * needs access to /dev/loop* and /dev/nbd* devices
 
     Usage:
-        bd = BlockDevice('/folder/path_to_disk_image.dd')
+        bd = BlockDevice('/folder/path_to_disk_image.dd', min_partition_size=1)
         bd.setup()
         mountpoints = bd.mount()
         # Do the things you need to do :)
@@ -129,11 +129,11 @@ class BlockDevice:
         if process.returncode == 0:
             blkdevice = process.stdout.strip()
             logger.info(
-                f"losetup: success creating {self.blkdevice} for {self.image_path}"
+                f"losetup: success creating {blkdevice} for {self.image_path}"
             )
         else:
             logger.error(
-                f"losetup: failed creating {self.blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+                f"losetup: failed creating {blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
             )
             raise RuntimeError(f"Error: {process.stderr} {process.stdout}")
 
@@ -257,7 +257,7 @@ class BlockDevice:
         Returns:
             tuple: tuple of return bool and error message
         """
-        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo"]
+        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo", "fdisk"]
         missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
         if missing_tools:
@@ -331,9 +331,11 @@ class BlockDevice:
             bool: True or False for importance of partition.
         """
         if partition["size"] < self.min_partition_size:
+            logger.info(f"Ignoring partions {partition['name']} as size < {self.min_partition_size}")
             return False
         fs_type = self._get_fstype(f"/dev/{partition['name']}")
         if fs_type not in self.supported_fstypes:
+            logger.info(f"Ignoring partions {partition['name']} as fs type {fs_type} not supported!")
             return False
 
         return True
