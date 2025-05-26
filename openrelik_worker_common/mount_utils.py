@@ -36,10 +36,14 @@ class BlockDevice:
     * needs access to /dev/loop* and /dev/nbd* devices
 
     Usage:
-        bd = BlockDevice('/folder/path_to_disk_image.dd', min_partition_size=1)
-        bd.setup()
-        mountpoints = bd.mount()
-        # Do the things you need to do :)
+        try:
+            bd = BlockDevice('/folder/path_to_disk_image.dd', min_partition_size=1)
+            bd.setup()
+            mountpoints = bd.mount()
+            # Do the things you need to do :)
+        except:
+            bd.umount()
+        # Do more things you need to do before umounting.
         bd.umount()
     """
 
