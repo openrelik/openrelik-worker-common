@@ -362,7 +362,7 @@ class Utils(unittest.TestCase):
             mount_utils.BlockDevice._required_tools_available(None)
         self.assertEqual(
             str(e.exception),
-            "Missing required tools: lsblk blkid mount qemu-nbd sudo",
+            "Missing required tools: lsblk blkid mount qemu-nbd sudo fdisk",
         )
 
     @patch("openrelik_worker_common.mount_utils.shutil.which")
