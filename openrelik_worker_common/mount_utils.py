@@ -305,6 +305,7 @@ class BlockDevice:
             )
             raise RuntimeError(f"Error lsblk: {process.stderr} {process.stdout}")
 
+        logger.info(f"Success parsing lsblk info: {blkdeviceinfo}")
         return blkdeviceinfo
 
     def _parse_partitions(self) -> list:
