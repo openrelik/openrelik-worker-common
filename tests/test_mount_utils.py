@@ -51,7 +51,7 @@ class Utils(unittest.TestCase):
         bd.setup()
         self.assertEqual(
             str(bd.blkdeviceinfo),
-            "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
+            "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': True, 'type': 'loop', 'mountpoints': [None]}]}",
         )
 
     @patch("openrelik_worker_common.mount_utils.BlockDevice._losetup")
