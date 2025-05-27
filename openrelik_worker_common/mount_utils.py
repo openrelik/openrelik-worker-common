@@ -73,7 +73,7 @@ class BlockDevice:
         self.mountpoints = []
         self.mountroot = "/mnt"
         self.max_mountpath_size = max_mountpath_size
-        self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
+        self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat", "ntfsinfo"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
 
         self.REDIS_URL = os.getenv("REDIS_URL") or "redis://localhost:6379/0"
@@ -261,15 +261,16 @@ class BlockDevice:
         following packages:
         * fdisk
         * qemu-utils
+        * ntfs-3g
 
         Returns:
             tuple: tuple of return bool and error message
         """
-        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo", "fdisk"]
+        tools = ["lsblk", "blkid", "mount", "qemu-nbd", "sudo", "fdisk", "ntfs-3g"]
         missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
         if missing_tools:
-            raise RuntimeError(f"Missing required tools: {' '.join(missing_tools)}")
+            raise RuntimeError(f"Missing required tools: {' '.join(missing_tools)}. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!")
 
         return True
 
