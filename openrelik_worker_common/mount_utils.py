@@ -127,6 +127,7 @@ class BlockDevice:
             "--find",
             "--partscan",
             "--show",
+            "--read-only",
             self.image_path,
         ]
 
