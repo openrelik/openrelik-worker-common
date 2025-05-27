@@ -381,7 +381,7 @@ class Utils(unittest.TestCase):
         ) as e:
             mount_utils.BlockDevice._required_tools_available(None)
         self.assertEqual(
-            str(e.exception), "Missing required tools: blkid qemu-nbd sudo"
+            str(e.exception), "Missing required tools: blkid qemu-nbd sudo. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!"
         )
 
     def test_GetMountPath_default(self):
