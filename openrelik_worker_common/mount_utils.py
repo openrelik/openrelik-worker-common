@@ -34,7 +34,7 @@ class BlockDevice:
     NOTE: If running in a container the container needs:
     * to be privileged (due to mounting)
     * needs access to /dev/loop* and /dev/nbd* devices
-    * fdisk, qemu-utils and ntfs-3g packages installed (debian)
+    * sudo, fdisk, qemu-utils and ntfs-3g packages installed (debian)
 
     Usage:
         try:
@@ -263,6 +263,7 @@ class BlockDevice:
         * fdisk
         * qemu-utils
         * ntfs-3g
+        * sudo
 
         Returns:
             tuple: tuple of return bool and error message
