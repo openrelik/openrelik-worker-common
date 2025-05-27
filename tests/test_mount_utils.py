@@ -374,6 +374,7 @@ class Utils(unittest.TestCase):
             None,
             None,
             "/path/to/partprobe",
+            "/path/to/ntfsinfo"
         ]
         with self.assertRaises(
             RuntimeError,

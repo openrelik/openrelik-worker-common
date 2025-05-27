@@ -142,7 +142,7 @@ class BlockDevice:
             )
         else:
             logger.error(
-                f"losetup: failed creating {blkdevice} for {self.image_path}: {process.stderr} {process.stdout}"
+                f"losetup: failed creating blockdevice for {self.image_path}: {process.stderr} {process.stdout}"
             )
             raise RuntimeError(f"Error: {process.stderr} {process.stdout}")
 
