@@ -89,7 +89,7 @@ class BlockDevice:
 
         # Log minimum partitions size
         logger.info(f"Minimum partition size {self.min_partition_size} Bytes, partitions smaller will be ignored!")
-        
+
         # Check if image_path exists
         image_path = pathlib.Path(self.image_path)
         if not pathlib.Path.exists(image_path):
@@ -338,11 +338,11 @@ class BlockDevice:
             bool: True or False for importance of partition.
         """
         if partition["size"] < self.min_partition_size:
-            logger.info(f"Ignoring partions {partition['name']} as size < {self.min_partition_size}")
+            logger.info(f"Ignoring partion {partition['name']} as size < {self.min_partition_size}")
             return False
         fs_type = self._get_fstype(f"/dev/{partition['name']}")
         if fs_type not in self.supported_fstypes:
-            logger.info(f"Ignoring partions {partition['name']} as fs type {fs_type} not supported!")
+            logger.info(f"Ignoring partion {partition['name']} as fs type {fs_type} not supported!")
             return False
 
         return True
