@@ -87,6 +87,9 @@ class BlockDevice:
         block device (loop or nbd) depending on image format and scan the paritions available.
         """
 
+        # Log minimum partitions size
+        logger.info(f"Minimum partition size {self.min_partition_size} Bytes, partitions smaller will be ignored!")
+        
         # Check if image_path exists
         image_path = pathlib.Path(self.image_path)
         if not pathlib.Path.exists(image_path):
