@@ -51,7 +51,7 @@ class Utils(unittest.TestCase):
         bd.setup()
         self.assertEqual(
             str(bd.blkdeviceinfo),
-            "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': False, 'type': 'loop', 'mountpoints': [None]}]}",
+            "{'blockdevices': [{'name': 'loop0', 'maj:min': '7:0', 'rm': False, 'size': 1048576, 'ro': True, 'type': 'loop', 'mountpoints': [None]}]}",
         )
 
     @patch("openrelik_worker_common.mount_utils.BlockDevice._losetup")
@@ -362,7 +362,7 @@ class Utils(unittest.TestCase):
             mount_utils.BlockDevice._required_tools_available(None)
         self.assertEqual(
             str(e.exception),
-            "Missing required tools: lsblk blkid mount qemu-nbd sudo",
+            "Missing required tools: lsblk blkid mount qemu-nbd sudo fdisk ntfsinfo. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!",
         )
 
     @patch("openrelik_worker_common.mount_utils.shutil.which")
@@ -374,13 +374,14 @@ class Utils(unittest.TestCase):
             None,
             None,
             "/path/to/partprobe",
+            "/path/to/ntfsinfo"
         ]
         with self.assertRaises(
             RuntimeError,
         ) as e:
             mount_utils.BlockDevice._required_tools_available(None)
         self.assertEqual(
-            str(e.exception), "Missing required tools: blkid qemu-nbd sudo"
+            str(e.exception), "Missing required tools: blkid qemu-nbd sudo. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!"
         )
 
     def test_GetMountPath_default(self):
