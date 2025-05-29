@@ -58,9 +58,9 @@ def get_input_files(pipe_result: str, input_files: list[dict], filter: dict = No
 def create_task_result(
     output_files: list[dict],
     workflow_id: str,
+    task_files: list[dict] = [],
     command: str = None,
     meta: dict = None,
-    task_logs: list[dict] = [],
     file_reports: list[dict] = [],
     task_report: dict = None,
 ) -> str:
@@ -69,9 +69,9 @@ def create_task_result(
     Args:
         output_files: List of output file dictionaries.
         workflow_id: ID of the workflow.
+        task_files: List of task log file dictionaries.
         command: The command used to execute the task.
         meta: Additional metadata for the task (optional).
-        task_logs: List of task log file dictionaries.
         file_reports: List of file report dictionaries.
         task_report: A dictionary representing a task report.
 
@@ -81,9 +81,9 @@ def create_task_result(
     result = {
         "output_files": output_files,
         "workflow_id": workflow_id,
+        "task_files": task_files,
         "command": command,
         "meta": meta,
-        "task_logs": task_logs,
         "file_reports": file_reports,
         "task_report": task_report,
     }
