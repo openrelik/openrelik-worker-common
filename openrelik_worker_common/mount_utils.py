@@ -43,9 +43,9 @@ class BlockDevice:
             mountpoints = bd.mount()
             # Do the things you need to do :)
         except:
+            # Handle your errors here.
+        finally:
             bd.umount()
-        # Do more things you need to do before umounting.
-        bd.umount()
     """
 
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
@@ -89,7 +89,9 @@ class BlockDevice:
         """
 
         # Log minimum partitions size
-        logger.info(f"Minimum partition size {self.min_partition_size} Bytes, partitions smaller will be ignored!")
+        logger.info(
+            f"Minimum partition size {self.min_partition_size} Bytes, partitions smaller will be ignored!"
+        )
 
         # Check if image_path exists
         image_path = pathlib.Path(self.image_path)
@@ -137,9 +139,7 @@ class BlockDevice:
         )
         if process.returncode == 0:
             blkdevice = process.stdout.strip()
-            logger.info(
-                f"losetup: success creating {blkdevice} for {self.image_path}"
-            )
+            logger.info(f"losetup: success creating {blkdevice} for {self.image_path}")
         else:
             logger.error(
                 f"losetup: failed creating blockdevice for {self.image_path}: {process.stderr} {process.stdout}"
@@ -272,7 +272,9 @@ class BlockDevice:
         missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
         if missing_tools:
-            raise RuntimeError(f"Missing required tools: {' '.join(missing_tools)}. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!")
+            raise RuntimeError(
+                f"Missing required tools: {' '.join(missing_tools)}. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!"
+            )
 
         return True
 
@@ -343,11 +345,21 @@ class BlockDevice:
             bool: True or False for importance of partition.
         """
         if partition["size"] < self.min_partition_size:
-            logger.info(f"Ignoring partion {partition['name']} as size < {self.min_partition_size}")
+            logger.info(
+                f"Ignoring partion {partition['name']} as size < {self.min_partition_size}"
+            )
             return False
         fs_type = self._get_fstype(f"/dev/{partition['name']}")
+        if fs_type == "":
+            logger.warning(
+                f"Ignoring partition {partition['name']} as fs type not available!"
+            )
+            return False
+
         if fs_type not in self.supported_fstypes:
-            logger.info(f"Ignoring partion {partition['name']} as fs type {fs_type} not supported!")
+            logger.warning(
+                f"Ignoring partition {partition['name']} as fs type {fs_type} not supported!"
+            )
             return False
 
         return True
@@ -538,3 +550,4 @@ class BlockDevice:
         self._detach_device()
         if self.redis_lock:
             self.redis_lock.release()
+            logger.info(f"Redis lock released: {self.redis_lock.name}")

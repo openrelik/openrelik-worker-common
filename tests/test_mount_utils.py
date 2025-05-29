@@ -25,7 +25,6 @@ class Utils(unittest.TestCase):
     """Test the mount utils functions."""
 
     mountroot = "./mnt"
-
     redis_client = None
 
     @classmethod
@@ -374,14 +373,15 @@ class Utils(unittest.TestCase):
             None,
             None,
             "/path/to/partprobe",
-            "/path/to/ntfsinfo"
+            "/path/to/ntfsinfo",
         ]
         with self.assertRaises(
             RuntimeError,
         ) as e:
             mount_utils.BlockDevice._required_tools_available(None)
         self.assertEqual(
-            str(e.exception), "Missing required tools: blkid qemu-nbd sudo. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!"
+            str(e.exception),
+            "Missing required tools: blkid qemu-nbd sudo. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!",
         )
 
     def test_GetMountPath_default(self):
@@ -412,6 +412,24 @@ class Utils(unittest.TestCase):
             str(e.exception),
             "Error generating mount path: the max_mount_path size (5) is too short, please choose a larger maximum mountpath size, minimum is self.mountroot + 1",
         )
+
+    @patch("openrelik_worker_common.mount_utils.subprocess.run")
+    def test_IsImportantPartitionNone(self, mock_subprocess):
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stdout="", stderr="", returncode=0
+        )
+        bd = mount_utils.BlockDevice("./test_data/image_vfat.img")
+        partition = {"name": "test_partition_name", "size": 1000000000}
+        with self.assertLogs(
+            "openrelik_worker_common.mount_utils", level="WARNING"
+        ) as cm:
+            bd._is_important_partition(partition)
+            self.assertEqual(
+                cm.output,
+                [
+                    "WARNING:openrelik_worker_common.mount_utils:Ignoring partition test_partition_name as fs type not available!"
+                ],
+            )
 
     def tearDown(self):
         # Cleanup any left over loop/nbd devices
