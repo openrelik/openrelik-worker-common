@@ -50,20 +50,20 @@ class Utils(unittest.TestCase):
 
         expected = {
             "output_files": output_files,
+            "task_files": [],
             "workflow_id": workflow_id,
             "command": command,
             "meta": meta,
-            "task_logs": [],
             "file_reports": [],
             "task_report": None,
         }
 
         result = task_utils.create_task_result(
             output_files=output_files,
+            task_files=[],
             workflow_id=workflow_id,
             command=command,
             meta=meta,
-            task_logs=[],
             file_reports=[],
             task_report=None,
         )
