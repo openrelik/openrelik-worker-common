@@ -14,7 +14,6 @@
 
 import unittest
 import subprocess
-import sys
 from fakeredis import FakeStrictRedis
 from pathlib import Path
 from unittest.mock import patch
