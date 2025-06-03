@@ -21,8 +21,8 @@ jobs:
 
       # Install all dependencies (including pdoc3)
       - run: |
-          apt-get update -y 
-          apt-get install -y python3-poetry
+          sudo apt-get update -y 
+          sudo apt-get install -y python3-poetry
           poetry install --with docs --no-root
       # Build documentation with pdoc3.
       - run: pdoc3 -o docs/ --config='docformat="google"' --force ./openrelik_worker_common
