@@ -37,6 +37,7 @@ class BlockDevice:
     * sudo, fdisk, qemu-utils and ntfs-3g packages installed (debian)
 
     Usage:
+        ```
         try:
             bd = BlockDevice('/folder/path_to_disk_image.dd', min_partition_size=1)
             bd.setup()
@@ -48,10 +49,10 @@ class BlockDevice:
             bd.umount()
     """
 
-    MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
-    MAX_NBD_DEVICES = 10
-    LOCK_TIMEOUT_SECONDS = 6 * 60 * 60  # 6 hours
-    MAX_MOUNTPATH_SIZE = 500
+    MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  #: Default 100 MB
+    MAX_NBD_DEVICES = 10  #: Default 10
+    LOCK_TIMEOUT_SECONDS = 6 * 60 * 60  #: Default 6 hours
+    MAX_MOUNTPATH_SIZE = 500  #: Default 500
 
     def __init__(
         self,
@@ -455,7 +456,7 @@ class BlockDevice:
             list: A list of paths the disk/partitions have been mounted on.
 
         Raises:
-          RuntimeError: If there as an error running mount.
+          RuntimeError: If there was an error running mount.
         """
         to_mount = self._select_partitions_to_mount(partition_name)
 
@@ -546,6 +547,17 @@ class BlockDevice:
             )
 
     def umount(self):
+        """Unmounts all mounted file systems and detaches the block device.
+
+        This method first attempts to unmount all file systems that were previously
+        mounted by the `mount()` method. After successfully unmounting, it detaches
+        the underlying block device (loop or NBD). If a Redis lock was acquired
+        for an NBD device, this lock is also released.
+
+        Raises:
+            RuntimeError: If unmounting any of the mount points fails, or if
+                          detaching the block device fails.
+        """
         self._umount_all()
         self._detach_device()
         if self.redis_lock:
