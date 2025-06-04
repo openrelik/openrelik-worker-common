@@ -43,9 +43,10 @@ class BlockDevice:
             bd.setup()
             mountpoints = bd.mount()
             # Do the things you need to do :)
+        except:
+            # Handle your errors here.
         finally:
             bd.umount()
-        ```
     """
 
     MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  #: Default 100 MB
@@ -350,9 +351,15 @@ class BlockDevice:
             )
             return False
         fs_type = self._get_fstype(f"/dev/{partition['name']}")
+        if fs_type == "":
+            logger.warning(
+                f"Ignoring partition {partition['name']} as fs type not available!"
+            )
+            return False
+
         if fs_type not in self.supported_fstypes:
-            logger.info(
-                f"Ignoring partion {partition['name']} as fs type {fs_type} not supported!"
+            logger.warning(
+                f"Ignoring partition {partition['name']} as fs type {fs_type} not supported!"
             )
             return False
 
@@ -555,3 +562,4 @@ class BlockDevice:
         self._detach_device()
         if self.redis_lock:
             self.redis_lock.release()
+            logger.info(f"Redis lock released: {self.redis_lock.name}")
