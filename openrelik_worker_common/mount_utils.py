@@ -37,21 +37,22 @@ class BlockDevice:
     * sudo, fdisk, qemu-utils and ntfs-3g packages installed (debian)
 
     Usage:
+        ```
         try:
             bd = BlockDevice('/folder/path_to_disk_image.dd', min_partition_size=1)
             bd.setup()
             mountpoints = bd.mount()
             # Do the things you need to do :)
         except:
+            # Handle your errors here.
+        finally:
             bd.umount()
-        # Do more things you need to do before umounting.
-        bd.umount()
     """
 
-    MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
-    MAX_NBD_DEVICES = 10
-    LOCK_TIMEOUT_SECONDS = 6 * 60 * 60  # 6 hours
-    MAX_MOUNTPATH_SIZE = 500
+    MIN_PARTITION_SIZE_BYTES = 100 * 1024 * 1024  #: Default 100 MB
+    MAX_NBD_DEVICES = 10  #: Default 10
+    LOCK_TIMEOUT_SECONDS = 6 * 60 * 60  #: Default 6 hours
+    MAX_MOUNTPATH_SIZE = 500  #: Default 500
 
     def __init__(
         self,
@@ -89,7 +90,9 @@ class BlockDevice:
         """
 
         # Log minimum partitions size
-        logger.info(f"Minimum partition size {self.min_partition_size} Bytes, partitions smaller will be ignored!")
+        logger.info(
+            f"Minimum partition size {self.min_partition_size} Bytes, partitions smaller will be ignored!"
+        )
 
         # Check if image_path exists
         image_path = pathlib.Path(self.image_path)
@@ -137,9 +140,7 @@ class BlockDevice:
         )
         if process.returncode == 0:
             blkdevice = process.stdout.strip()
-            logger.info(
-                f"losetup: success creating {blkdevice} for {self.image_path}"
-            )
+            logger.info(f"losetup: success creating {blkdevice} for {self.image_path}")
         else:
             logger.error(
                 f"losetup: failed creating blockdevice for {self.image_path}: {process.stderr} {process.stdout}"
@@ -272,7 +273,9 @@ class BlockDevice:
         missing_tools = [tool for tool in tools if not shutil.which(tool)]
 
         if missing_tools:
-            raise RuntimeError(f"Missing required tools: {' '.join(missing_tools)}. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!")
+            raise RuntimeError(
+                f"Missing required tools: {' '.join(missing_tools)}. Make sure you have the fdisk, qemu-utils and ntfs-3g packages installed!"
+            )
 
         return True
 
@@ -343,11 +346,21 @@ class BlockDevice:
             bool: True or False for importance of partition.
         """
         if partition["size"] < self.min_partition_size:
-            logger.info(f"Ignoring partion {partition['name']} as size < {self.min_partition_size}")
+            logger.info(
+                f"Ignoring partion {partition['name']} as size < {self.min_partition_size}"
+            )
             return False
         fs_type = self._get_fstype(f"/dev/{partition['name']}")
+        if fs_type == "":
+            logger.warning(
+                f"Ignoring partition {partition['name']} as fs type not available!"
+            )
+            return False
+
         if fs_type not in self.supported_fstypes:
-            logger.info(f"Ignoring partion {partition['name']} as fs type {fs_type} not supported!")
+            logger.warning(
+                f"Ignoring partition {partition['name']} as fs type {fs_type} not supported!"
+            )
             return False
 
         return True
@@ -443,7 +456,7 @@ class BlockDevice:
             list: A list of paths the disk/partitions have been mounted on.
 
         Raises:
-          RuntimeError: If there as an error running mount.
+          RuntimeError: If there was an error running mount.
         """
         to_mount = self._select_partitions_to_mount(partition_name)
 
@@ -534,7 +547,19 @@ class BlockDevice:
             )
 
     def umount(self):
+        """Unmounts all mounted file systems and detaches the block device.
+
+        This method first attempts to unmount all file systems that were previously
+        mounted by the `mount()` method. After successfully unmounting, it detaches
+        the underlying block device (loop or NBD). If a Redis lock was acquired
+        for an NBD device, this lock is also released.
+
+        Raises:
+            RuntimeError: If unmounting any of the mount points fails, or if
+                          detaching the block device fails.
+        """
         self._umount_all()
         self._detach_device()
         if self.redis_lock:
             self.redis_lock.release()
+            logger.info(f"Redis lock released: {self.redis_lock.name}")
