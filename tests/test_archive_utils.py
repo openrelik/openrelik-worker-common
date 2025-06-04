@@ -67,6 +67,43 @@ class TestArchiveUtils(unittest.TestCase):
     @patch("subprocess.call")
     @patch("subprocess.check_output")
     @patch("shutil.which")
+    def test_extract_archive_tar_includes_password(
+        self, mock_which, mock_check_output, mock_subprocess_call
+    ):
+        input_file = {"path": "/path/to/archive.tar.gz", "display_name": "archive.tar.gz"}
+        mock_check_output.return_value = b""
+        mock_which.return_value = True
+        mock_subprocess_call.return_value = 0
+
+        result = extract_archive(
+            input_file, self.output_folder, self.log_file, self.file_filter, "Openrelik123!"
+        )
+        self.assertIn("tar -vxzf", result[0])
+        self.assertNotIn("-pOpenrelik123!", result[0])
+        self.assertIn(self.output_folder, result[1])
+
+    @patch("subprocess.call")
+    @patch("subprocess.check_output")
+    @patch("shutil.which")
+    def test_extract_archive_zip_includes_password(
+        self, mock_which, mock_check_output, mock_subprocess_call
+    ):
+        input_file = {"path": "/path/to/archive.zip", "display_name": "archive.zip"}
+        mock_check_output.return_value = b""
+        mock_which.return_value = True
+        mock_subprocess_call.return_value = 0
+
+        result = extract_archive(
+            input_file, self.output_folder, self.log_file, self.file_filter, "Openrelik123!"
+        )
+        self.assertIn("7z x", result[0])
+        self.assertIn("*.txt", result[0])
+        self.assertIn("-pOpenrelik123!", result[0])
+        self.assertIn(self.output_folder, result[1])
+
+    @patch("subprocess.call")
+    @patch("subprocess.check_output")
+    @patch("shutil.which")
     def test_extract_archive_zip_no_filter(
         self, mock_which, mock_check_output, mock_subprocess_call
     ):
