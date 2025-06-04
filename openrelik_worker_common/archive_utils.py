@@ -60,21 +60,14 @@ def extract_archive(
             for pattern in file_filter:
                 command.extend(["--wildcards", pattern.strip()])
     else:
-        if archive_password is None:
-            command = [
-                "7z",
-                "x",
-                input_path,
-                f"-o{export_folder}",
-            ]
-        else:
-            command = [
-                "7z",
-                "x",
-                f"-p{archive_password}",
-                input_path,
-                f"-o{export_folder}",
-            ]
+        command = [
+            "7z",
+            "x",
+            input_path,
+            f"-o{export_folder}",
+        ]
+        if archive_password is not None:
+            command.append(f"-p{archive_password}")
         if file_filter:
             command.append("-r")
             for pattern in file_filter:
