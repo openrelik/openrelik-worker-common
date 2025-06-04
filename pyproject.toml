@@ -10,11 +10,12 @@ authors = [
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 debugpy = "^1.8.6"
 redis = "^5.2.1"
 
 [tool.poetry.group.test.dependencies]
+python = "^3.11"
 pytest = "*"
 pytest-cov = "^5.0.0"
 fakeredis = { extras = ["lua"], version = "^2.28.1" }
