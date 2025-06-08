@@ -166,6 +166,41 @@ class Utils(unittest.TestCase):
         relative_path = file_utils.get_relative_path("/xxx/yyy/test.txt")
         self.assertEqual(relative_path, "xxx/yyy/test.txt")
 
+    def test_valid_disk_image_extensions(self):
+        # Test with various valid disk image extensions
+        self.assertTrue(file_utils.is_disk_image({"display_name": "myimage.img"}))
+        self.assertTrue(file_utils.is_disk_image({"display_name": "vm.qcow3"}))
+        self.assertTrue(file_utils.is_disk_image({"display_name": "another.qcow2"}))
+        self.assertTrue(file_utils.is_disk_image({"display_name": "test.qcow"}))
+        # Test a file name with multiple dots, where the last part is the extension
+        self.assertTrue(file_utils.is_disk_image({"display_name": "backup.disk.qcow2"}))
+        # Test that extensions are case-insensitive
+        self.assertTrue(file_utils.is_disk_image({"display_name": "data.RAW"}))
+        self.assertTrue(file_utils.is_disk_image({"display_name": "disk.DD"}))
+
+    def test_non_disk_image_extensions(self):
+        # Test with common file extensions that are not disk images
+        self.assertFalse(file_utils.is_disk_image({"display_name": "document.txt"}))
+        self.assertFalse(file_utils.is_disk_image({"display_name": "report.pdf"}))
+        # Test a file name without an extension
+        self.assertFalse(
+            file_utils.is_disk_image({"display_name": "my_disk_image_no_ext"})
+        )
+
+    def test_missing_display_name(self):
+        # Test that a RuntimeError is raised when 'display_name' is missing
+        with self.assertRaises(RuntimeError) as cm:
+            file_utils.is_disk_image({"other_key": "some_value"})
+        self.assertIn(
+            "inputfile parameter malformed, no display_name found", str(cm.exception)
+        )
+
+        with self.assertRaises(RuntimeError) as cm:
+            file_utils.is_disk_image({})
+        self.assertIn(
+            "inputfile parameter malformed, no display_name found", str(cm.exception)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
