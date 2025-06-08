@@ -1,7 +1,7 @@
 name: website
 
 # build the documentation new commits on main and PRs
-on: [push, pull_request]
+on: [push]
 
 # security: restrict permissions for CI jobs.
 permissions:
