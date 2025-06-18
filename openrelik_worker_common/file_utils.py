@@ -215,3 +215,27 @@ def delete_file_tree(root_path: tempfile.TemporaryDirectory) -> None:
         raise TypeError("Root path is not a TemporaryDirectory object!")
 
     root_path.cleanup()
+
+
+def is_disk_image(inputfile: dict) -> bool:
+    """Check if inputfile is a disk image.
+
+    Args:
+        inputfile: InputFile structure.
+
+    Returns: bool
+    Raises: RuntimeError
+    """
+    disk_image_extensions = [".img", ".raw", ".dd", ".qcow3", ".qcow2", ".qcow"]
+
+    if "display_name" not in inputfile:
+        raise RuntimeError("inputfile parameter malformed, no display_name found")
+
+    input_filename = str(inputfile.get("display_name"))
+
+    _, file_extension = os.path.splitext(input_filename)
+
+    if file_extension.lower() in disk_image_extensions:
+        return True
+
+    return False
