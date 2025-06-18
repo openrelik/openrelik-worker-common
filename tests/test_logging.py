@@ -6,13 +6,13 @@ import pytest_structlog
 
 # Log usage functions
 def log_plain():
-    os.environ["LOG_TYPE"] = ""
+    os.environ.pop("LOG_TYPE", None)
     logger = Logger().get_logger(__name__)
     logger.info("test")
 
 
 def log_wrap():
-    os.environ["LOG_TYPE"] = ""
+    os.environ.pop("LOG_TYPE", None)
     logger = Logger().get_logger(name=__name__, wrap_logger=logging.getLogger())
     logger.info("test")
 
@@ -45,7 +45,7 @@ def test_bind_structlog(log: pytest_structlog.StructuredLogCapture):
 def test_get_plain_python(caplog):
     caplog.set_level(logging.INFO)
     log_plain()
-    assert "INFO     tests.test_logging:test_logging.py:10 test\n" == caplog.text
+    assert "INFO     tests.test_logging:test_logging.py:11 test\n" == caplog.text
 
 
 def test_get_wrap(log: pytest_structlog.StructuredLogCapture):
