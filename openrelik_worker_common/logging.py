@@ -2,10 +2,12 @@ import logging
 import structlog
 import os
 
+LOG_TYPE = "LOG_TYPE"
+
 
 class Logger:
     def __init__(self):
-        if os.environ.get("LOG_TYPE", "") == "structlog":
+        if os.environ.get(LOG_TYPE, "") == "structlog":
             structlog.configure(
                 processors=[
                     # If log level is too low, abort pipeline and throw away log entry.
@@ -53,12 +55,12 @@ class Logger:
 
     def get_logger(self, name="", wrap_logger=None):
         """
-        Returns a wrapper, struclog or plain python logger.
+        Returns a wrapper, structlog or plain python logger.
         """
         if wrap_logger:
             # This can be used to wrap e.g. the Celery logger in a structlog
             self.logger = structlog.wrap_logger(wrap_logger)
-        elif os.environ.get("LOG_TYPE", "").startswith("structlog"):
+        elif os.environ.get(LOG_TYPE, "") == "structlog":
             self.logger = structlog.get_logger(name)
         else:
             self.logger = logging.getLogger(name)
@@ -66,5 +68,5 @@ class Logger:
         return self.logger
 
     def bind(self, **kwargs):
-        if os.environ.get("LOG_TYPE", "").startswith("structlog"):
+        if os.environ.get(LOG_TYPE, "") == "structlog":
             structlog.contextvars.bind_contextvars(**kwargs)
