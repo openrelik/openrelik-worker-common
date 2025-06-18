@@ -69,8 +69,10 @@ class Logger:
             # This can be used to wrap e.g. the Celery logger in a structlog
             self.logger = structlog.wrap_logger(wrap_logger)
         elif os.environ.get(LOG_TYPE, "").startswith("structlog"):
+            # Get a JSON or Console logger
             self.logger = structlog.get_logger(name)
         else:
+            # Get a plain Python logger
             self.logger = logging.getLogger(name)
 
         return self.logger
