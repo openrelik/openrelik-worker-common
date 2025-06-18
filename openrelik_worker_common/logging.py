@@ -58,7 +58,7 @@ class Logger:
                 logger_factory=structlog.stdlib.LoggerFactory(),
                 # Effectively freeze configuration after creating the first bound
                 # logger.
-                cache_logger_on_first_use=False,
+                # cache_logger_on_first_use=True,
             )
 
     def get_logger(self, name="", wrap_logger=None):
