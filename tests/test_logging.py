@@ -4,6 +4,7 @@ from openrelik_worker_common.logging import Logger
 import pytest_structlog
 
 
+# Log usage functions
 def log_plain():
     os.environ["LOG_TYPE"] = ""
     logger = Logger().get_logger(__name__)
@@ -30,6 +31,7 @@ def log_structlog():
     logger.info("test")
 
 
+# Tests
 def test_structlog(log: pytest_structlog.StructuredLogCapture):
     log_structlog()
     assert log.has("test", level="info")
