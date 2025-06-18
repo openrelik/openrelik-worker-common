@@ -61,9 +61,9 @@ class Logger:
                 # cache_logger_on_first_use=True,
             )
 
-    def get_logger(self, name="", wrap_logger=None):
+    def get_logger(self, name="", wrap_logger=None, **kwargs):
         """
-        Returns a wrapper, structlog or plain python logger.
+        Returns a wrapper, structlog or plain python logger and binds key-value kwargs.
         """
         if wrap_logger:
             # This can be used to wrap e.g. the Celery logger in a structlog
@@ -74,6 +74,9 @@ class Logger:
         else:
             # Get a plain Python logger
             self.logger = logging.getLogger(name)
+
+        # Bind any extra arguments as key-value pairs to the logger.
+        self.bind(**kwargs)
 
         return self.logger
 
