@@ -7,19 +7,19 @@ import pytest_structlog
 
 # Log usage functions
 def log_plain():
-    os.environ.pop("LOG_TYPE", None)
+    os.environ.pop("OPENRELIK_LOG_TYPE", None)
     logger = Logger().get_logger(__name__)
     logger.info("test")
 
 
 def log_wrap():
-    os.environ.pop("LOG_TYPE", None)
+    os.environ.pop("OPENRELIK_LOG_TYPE", None)
     logger = Logger().get_logger(name=__name__, wrap_logger=logging.getLogger())
     logger.info("test")
 
 
 def log_bind_structlog():
-    os.environ["LOG_TYPE"] = "structlog"
+    os.environ["OPENRELIK_LOG_TYPE"] = "structlog"
     log = Logger()
     logger = log.get_logger(__name__)
     log.bind(workflow_id=12345)
@@ -27,13 +27,13 @@ def log_bind_structlog():
 
 
 def log_structlog():
-    os.environ["LOG_TYPE"] = "structlog"
+    os.environ["OPENRELIK_LOG_TYPE"] = "structlog"
     logger = Logger().get_logger(__name__)
     logger.info("test")
 
 
 def log_bind_structlog_console():
-    os.environ["LOG_TYPE"] = "structlog_console"
+    os.environ["OPENRELIK_LOG_TYPE"] = "structlog_console"
     log = Logger()
     logger = log.get_logger(__name__)
     log.bind(workflow_id=12345)
@@ -41,7 +41,7 @@ def log_bind_structlog_console():
 
 
 def log_structlog_console():
-    os.environ["LOG_TYPE"] = "structlog_console"
+    os.environ["OPENRELIK_LOG_TYPE"] = "structlog_console"
     logger = Logger().get_logger(__name__)
     logger.info("test")
 
