@@ -2,12 +2,12 @@ import logging
 import structlog
 import os
 
-LOG_TYPE = "LOG_TYPE"
+OPENRELIK_LOG_TYPE = "OPENRELIK_LOG_TYPE"
 
 
 class Logger:
     def __init__(self):
-        if os.environ.get(LOG_TYPE, "").startswith("structlog"):
+        if os.environ.get(OPENRELIK_LOG_TYPE, "").startswith("structlog"):
             base_processors = [
                 # Merge bind context variables
                 structlog.contextvars.merge_contextvars,
@@ -39,7 +39,7 @@ class Logger:
                     }
                 ),
             ]
-            if os.environ.get(LOG_TYPE, "") == "structlog_console":
+            if os.environ.get(OPENRELIK_LOG_TYPE, "") == "structlog_console":
                 # Render the final event dict for Console output.
                 base_processors.append(structlog.dev.ConsoleRenderer())
             else:
@@ -68,7 +68,7 @@ class Logger:
         if wrap_logger:
             # This can be used to wrap e.g. the Celery logger in a structlog
             self.logger = structlog.wrap_logger(wrap_logger)
-        elif os.environ.get(LOG_TYPE, "").startswith("structlog"):
+        elif os.environ.get(OPENRELIK_LOG_TYPE, "").startswith("structlog"):
             # Get a JSON or Console logger
             self.logger = structlog.get_logger(name)
         else:
@@ -81,5 +81,5 @@ class Logger:
         return self.logger
 
     def bind(self, **kwargs):
-        if os.environ.get(LOG_TYPE, "").startswith("structlog"):
+        if os.environ.get(OPENRELIK_LOG_TYPE, "").startswith("structlog"):
             structlog.contextvars.bind_contextvars(**kwargs)
