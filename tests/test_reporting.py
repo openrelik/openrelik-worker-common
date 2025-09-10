@@ -1,12 +1,12 @@
 import unittest
+
 from openrelik_worker_common.reporting import (
-    MarkdownTable,
     MarkdownDocument,
     MarkdownDocumentSection,
-    Report,
+    MarkdownTable,
     Priority,
+    Report,
 )
-from unittest.mock import patch, MagicMock
 
 
 class TestMarkdownDocument(unittest.TestCase):
@@ -63,6 +63,16 @@ class TestMarkdownDocument(unittest.TestCase):
         document = MarkdownDocument("Test Document")
         markdown = document.to_markdown()
         self.assertIn("# Test Document", markdown)
+
+    def test_markdown_report_to_markdown(self):
+        document = Report("Test Report")
+        markdown = document.to_markdown()
+        self.assertIn("# Test Report", markdown)
+
+    def test_markdown_report_without_title(self):
+        document = Report()
+        markdown = document.to_markdown()
+        self.assertIn("", markdown)
 
 
 class TestMarkdownDocumentSection(unittest.TestCase):

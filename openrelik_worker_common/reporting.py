@@ -36,9 +36,7 @@ class MarkdownTable:
             row_data(list): A list of strings representing the row data.
         """
         if len(row_data) != len(self.columns):
-            raise ValueError(
-                "Number of columns in row data does not match table columns."
-            )
+            raise ValueError("Number of columns in row data does not match table columns.")
         self.rows.append(row_data)
 
     def to_markdown(self) -> str:
@@ -176,6 +174,7 @@ class MarkdownDocument:
         Returns:
             string: A Markdown representation of the document.
         """
+        markdown_text = ""
         if self.title:
             markdown_text = f"{self.fmt.title(text=self.title)}\n"
 
@@ -222,7 +221,7 @@ class Report(MarkdownDocument):
         summary (str): A summary of the report.
     """
 
-    def __init__(self, title: str):
+    def __init__(self, title: str = None):
         """Initializes a TaskReport object.
 
         Args:
