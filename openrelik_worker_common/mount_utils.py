@@ -102,6 +102,9 @@ class BlockDevice:
         # Check if required tools are available
         self._required_tools_available()
 
+        # Check the required kernel modules are available
+        self._required_modules_loaded()
+
         # Setup the block device
         ext = image_path.suffix.strip(".")
         if ext.lower() in self.supported_qcowtypes:
@@ -255,6 +258,27 @@ class BlockDevice:
             )
 
         return self.blkdevice
+
+    def _required_modules_loaded(self) -> None:
+        """Checks if a required kernel module is loaded.
+
+        The following modules are checked:
+        * nbd  (For mounting qcow disk images)
+
+        Raises:
+            RuntimeError: as soon as we find a module that isn't loaded.
+        """
+
+        for module in ['nbd']:
+            try:
+                subprocess.check_call(
+                        ["/sbin/modinfo", module],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:
+                  raise RuntimeError(
+                          f"Required kernel module {module} is not loaded. "
+                          f"Load it with '/sbin/modprobe {module}' on the Host.")
 
     def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
