@@ -269,10 +269,10 @@ class BlockDevice:
             RuntimeError: as soon as we find a module that isn't loaded.
         """
 
-        for module in ['nbd']:
+        for module in ["nbd"]:
             try:
                 subprocess.check_call(
-                        ["/sbin/modinfo", module],
+                        ["/usr/bin/grep", "-E", f"^{module}\\s", "/proc/modules"],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL)
             except subprocess.CalledProcessError:
