@@ -1,12 +1,30 @@
+# WARNNING: This Logger class is deprecated, please use the Logger class in
+# https://github.com/openrelik/openrelik-common/
 import logging
 import structlog
 import os
+import warnings
 
 OPENRELIK_LOG_TYPE = "OPENRELIK_LOG_TYPE"
+
+DEPRECATED = """WARNING: This Logger class is deprecated and will be removed, please use the Logger class in 
+https://github.com/openrelik/openrelik-common/"""
+
+warnings.warn(
+    DEPRECATED,
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class Logger:
     def __init__(self):
+        warnings.warn(
+            DEPRECATED,
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         if os.environ.get(OPENRELIK_LOG_TYPE, "").startswith("structlog"):
             base_processors = [
                 # Merge bind context variables
@@ -65,6 +83,12 @@ class Logger:
         """
         Returns a wrapper, structlog or plain python logger and binds key-value kwargs.
         """
+        warnings.warn(
+            DEPRECATED,
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         if wrap_logger:
             # This can be used to wrap e.g. the Celery logger in a structlog
             self.logger = structlog.wrap_logger(wrap_logger)
@@ -81,5 +105,10 @@ class Logger:
         return self.logger
 
     def bind(self, **kwargs):
+        warnings.warn(
+            DEPRECATED,
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if os.environ.get(OPENRELIK_LOG_TYPE, "").startswith("structlog"):
             structlog.contextvars.bind_contextvars(**kwargs)
