@@ -60,7 +60,15 @@ def get_input_files(
         )
         ```
     """
-    if pipe_result:
+    pipe_results = []
+
+    if isinstance(pipe_result, list):
+        pipe_results.extend(pipe_result)
+
+    if isinstance(pipe_result, str):
+        pipe_results.append(pipe_result)
+
+    for pipe_result in pipe_results:
         result_string = base64.b64decode(pipe_result.encode("utf-8")).decode("utf-8")
         result_dict = json.loads(result_string)
         input_files = result_dict.get("output_files", [])
