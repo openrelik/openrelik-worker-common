@@ -151,6 +151,72 @@ class TestArchiveUtils(unittest.TestCase):
                 input_file, self.output_folder, self.log_file, self.file_filter
             )
 
+    @patch("subprocess.call")
+    @patch("subprocess.check_output")
+    @patch("shutil.which")
+    def test_extract_archive_zip_ignore_prompts(
+        self, mock_which, mock_check_output, mock_subprocess_call
+    ):
+        input_file = {"path": "/path/to/archive.zip", "display_name": "archive.zip"}
+        mock_check_output.return_value = b""
+        mock_which.return_value = True
+        mock_subprocess_call.return_value = 0
+
+        result = extract_archive(
+            input_file,
+            self.output_folder,
+            self.log_file,
+            self.file_filter,
+            ignore_prompts=True,
+        )
+        self.assertIn("7z x", result[0])
+        self.assertIn(" -y", result[0])
+        self.assertIn(self.output_folder, result[1])
+
+    @patch("subprocess.call")
+    @patch("subprocess.check_output")
+    @patch("shutil.which")
+    def test_extract_archive_zip_no_ignore_prompts(
+        self, mock_which, mock_check_output, mock_subprocess_call
+    ):
+        input_file = {"path": "/path/to/archive.zip", "display_name": "archive.zip"}
+        mock_check_output.return_value = b""
+        mock_which.return_value = True
+        mock_subprocess_call.return_value = 0
+
+        result = extract_archive(
+            input_file,
+            self.output_folder,
+            self.log_file,
+            self.file_filter,
+            ignore_prompts=False,
+        )
+        self.assertIn("7z x", result[0])
+        self.assertNotIn(" -y", result[0])
+        self.assertIn(self.output_folder, result[1])
+
+    @patch("subprocess.call")
+    @patch("subprocess.check_output")
+    @patch("shutil.which")
+    def test_extract_archive_tgz_ignore_prompts_ignored(
+        self, mock_which, mock_check_output, mock_subprocess_call
+    ):
+        input_file = {"path": "/path/to/archive.tgz", "display_name": "archive.tgz"}
+        mock_check_output.return_value = b""
+        mock_which.return_value = True
+        mock_subprocess_call.return_value = 0
+
+        result = extract_archive(
+            input_file,
+            self.output_folder,
+            self.log_file,
+            self.file_filter,
+            ignore_prompts=True,
+        )
+        self.assertIn("tar -vxzf", result[0])
+        self.assertNotIn(" -y", result[0])
+        self.assertIn(self.output_folder, result[1])
+
     def test_malformed_input_file(self):
         input_file = {}
 
