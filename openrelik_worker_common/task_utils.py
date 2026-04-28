@@ -120,10 +120,9 @@ def create_task_result(
         skip_file_creation: If True, signals to the mediator that it should
             **not** create database entries for the files in `output_files`.
             The files are still included in the result so downstream workers
-            receive them, but they will not appear as first-class files in the
-            UI or the database. Useful for tasks that produce a large number
-            of intermediate files where per-file DB bookkeeping is undesirable.
-            Defaults to False.
+            receive them, but they will not appear in the UI or the database.
+            Useful for tasks that produce a large number of intermediate files
+            where per-file DB bookkeeping is undesirable. Defaults to False.
 
     Returns:
         A base64-encoded string representing the JSON serialization of the
