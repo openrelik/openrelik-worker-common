@@ -87,6 +87,7 @@ def create_task_result(
     meta: dict = None,
     file_reports: list[dict] = [],
     task_report: dict = None,
+    skip_file_creation: bool = False,
 ) -> str:
     """Create a task result dictionary and encode it to a base64 string.
 
@@ -116,6 +117,13 @@ def create_task_result(
         task_report: An optional `openrelik_worker_common.reporting.Report` dictionary representing a comprehensive report
             for the entire task. This report will be shown in the Web UI.
             Defaults to None.
+        skip_file_creation: If True, signals to the mediator that it should
+            **not** create database entries for the files in `output_files`.
+            The files are still included in the result so downstream workers
+            receive them, but they will not appear as first-class files in the
+            UI or the database. Useful for tasks that produce a large number
+            of intermediate files where per-file DB bookkeeping is undesirable.
+            Defaults to False.
 
     Returns:
         A base64-encoded string representing the JSON serialization of the
@@ -177,6 +185,7 @@ def create_task_result(
         "meta": meta,
         "file_reports": file_reports,
         "task_report": task_report,
+        "skip_file_creation": skip_file_creation,
     }
     return encode_dict_to_base64(result)
 
