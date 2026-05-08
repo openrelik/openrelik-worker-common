@@ -110,8 +110,23 @@ class Utils(unittest.TestCase):
             "path": "output_path/123456789",
             "original_path": None,
             "source_file_id": parent_outputfile,
+            "register_in_db": True,
         }
         self.assertDictEqual(result, expected)
+
+    def test_create_output_file_register_in_db_default(self):
+        """Default register_in_db is True."""
+        result = file_utils.create_output_file(output_base_path="output_path/")
+        self.assertTrue(result.register_in_db)
+        self.assertTrue(result.to_dict()["register_in_db"])
+
+    def test_create_output_file_register_in_db_false(self):
+        """register_in_db=False is honored and serialized."""
+        result = file_utils.create_output_file(
+            output_base_path="output_path/", register_in_db=False
+        )
+        self.assertFalse(result.register_in_db)
+        self.assertFalse(result.to_dict()["register_in_db"])
 
     def test_build_file_tree(self):
         """Test the build_file_tree function."""

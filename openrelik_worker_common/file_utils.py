@@ -31,6 +31,9 @@ class OutputFile:
         path: The full path to the file.
         original_path: The full original path to the file.
         source_file_id: The OutputFile this file belongs to.
+        register_in_db: When False, the mediator skips DB registration, hashing,
+            and file reports for this file. Use for intermediate artifacts that
+            downstream tasks consume but that shouldn't appear in the UI or DB.
     """
 
     def __init__(
@@ -42,6 +45,7 @@ class OutputFile:
         data_type: Optional[str] = None,
         original_path: Optional[str] = None,
         source_file_id: Optional[int] = None,
+        register_in_db: bool = True,
     ):
         """Initialize an OutputFile object.
 
@@ -53,6 +57,8 @@ class OutputFile:
             data_type: The data type of the output file (optional).
             orignal_path: The orignal path of the file (optional).
             source_file_id: The OutputFile this file belongs to (optional).
+            register_in_db: Whether the mediator should create a DB row for
+                this file. Defaults to True.
         """
         self.uuid = uuid
         self.display_name = display_name
@@ -61,6 +67,7 @@ class OutputFile:
         self.path = output_path
         self.original_path = original_path
         self.source_file_id = source_file_id
+        self.register_in_db = register_in_db
 
     def to_dict(self) -> dict:
         """
@@ -78,6 +85,7 @@ class OutputFile:
             "path": self.path,
             "original_path": self.original_path,
             "source_file_id": self.source_file_id,
+            "register_in_db": self.register_in_db,
         }
 
 
@@ -88,6 +96,7 @@ def create_output_file(
     data_type: Optional[str] = None,
     original_path: Optional[str] = None,
     source_file_id: Optional[OutputFile] = None,
+    register_in_db: bool = True,
 ) -> OutputFile:
     """Creates and returns an OutputFile object.
 
@@ -98,6 +107,9 @@ def create_output_file(
         data_type: The data type of the output file (optional).
         original_path: The orignal path of the file (optional).
         source_file_id: The OutputFile this file belongs to (optional).
+        register_in_db: Whether the mediator should create a DB row for
+            this file. Defaults to True. Set to False for intermediate
+            artifacts not meant for UI/DB tracking.
 
     Returns:
         An OutputFile object.
@@ -128,6 +140,7 @@ def create_output_file(
         data_type=data_type,
         original_path=original_path,
         source_file_id=source_file_id,
+        register_in_db=register_in_db,
     )
 
 
