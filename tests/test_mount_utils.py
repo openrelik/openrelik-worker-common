@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 import subprocess
 from fakeredis import FakeStrictRedis
@@ -21,6 +22,7 @@ from unittest.mock import patch
 from openrelik_worker_common import mount_utils
 
 
+@unittest.skipIf(sys.platform != "linux", "Linux-only integration tests requiring loop/NBD devices and root/sudo privileges")
 class Utils(unittest.TestCase):
     """Test the mount utils functions."""
 

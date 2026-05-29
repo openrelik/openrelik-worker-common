@@ -9,8 +9,8 @@ Documentation can be found [here](https://openrelik.github.io/openrelik-worker-c
 # Run Tests
 ```
 sudo apt-get install john john-data hashcat qemu-utils fdisk ntfs-3g
-poetry install --with test --no-root
-poetry run pytest --cov=.
+uv sync --all-groups
+uv run pytest --cov=.
 ```
 
 ##### Obligatory Fine Print
