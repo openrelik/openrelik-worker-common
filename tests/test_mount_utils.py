@@ -25,6 +25,7 @@ class Utils(unittest.TestCase):
     """Test the mount utils functions."""
 
     mountroot = "./mnt"
+    ewf_image_path = "/mock/evidence.E01"
     redis_client = None
 
     @classmethod
@@ -231,6 +232,231 @@ class Utils(unittest.TestCase):
             str(e.exception),
             "Error running qemu-nbd: None not a qcow file",
         )
+
+    @patch.object(mount_utils.BlockDevice, "_parse_partitions")
+    @patch.object(mount_utils.BlockDevice, "_blkinfo")
+    @patch.object(mount_utils.BlockDevice, "_losetup")
+    @patch.object(mount_utils.BlockDevice, "_required_modules_loaded")
+    @patch.object(mount_utils.BlockDevice, "_required_tools_available")
+    @patch.object(mount_utils.BlockDevice, "_ewfmount")
+    @patch("openrelik_worker_common.mount_utils.pathlib.Path.exists")
+    def test_EwfSetupUsesLoopDeviceWithoutNbdModuleCheck(
+        self,
+        mock_path_exists,
+        mock_ewfmount,
+        mock_tools,
+        mock_modules,
+        mock_losetup,
+        mock_blkinfo,
+        mock_parse_partitions,
+    ):
+        mock_path_exists.return_value = True
+        mock_ewfmount.return_value = "/mnt/openrelik-ewf-test/ewf1"
+        mock_losetup.return_value = "/dev/loop0"
+        mock_blkinfo.return_value = {"blockdevices": []}
+        mock_parse_partitions.return_value = []
+
+        bd = mount_utils.BlockDevice(self.ewf_image_path)
+        bd.setup()
+
+        mock_ewfmount.assert_called_once_with()
+        mock_modules.assert_not_called()
+        mock_losetup.assert_called_once_with()
+        self.assertEqual(bd.original_image_path, self.ewf_image_path)
+        self.assertEqual(bd.image_path, "/mnt/openrelik-ewf-test/ewf1")
+        self.assertEqual(bd.blkdevice, "/dev/loop0")
+
+    @patch.object(mount_utils.BlockDevice, "_ewfumount")
+    @patch.object(mount_utils.BlockDevice, "_losetup")
+    @patch.object(mount_utils.BlockDevice, "_required_tools_available")
+    @patch.object(mount_utils.BlockDevice, "_ewfmount")
+    @patch("openrelik_worker_common.mount_utils.pathlib.Path.exists")
+    def test_EwfSetupCleansUpEwfMountOnFailure(
+        self,
+        mock_path_exists,
+        mock_ewfmount,
+        mock_tools,
+        mock_losetup,
+        mock_ewfumount,
+    ):
+        mock_path_exists.return_value = True
+        mock_losetup.side_effect = RuntimeError("losetup failed")
+
+        bd = mount_utils.BlockDevice(self.ewf_image_path)
+
+        def _ewfmount():
+            bd.ewf_mount_path = "/mnt/openrelik-ewf-test"
+            return "/mnt/openrelik-ewf-test/ewf1"
+
+        mock_ewfmount.side_effect = _ewfmount
+
+        with self.assertRaises(RuntimeError) as e:
+            bd.setup()
+
+        self.assertEqual(str(e.exception), "losetup failed")
+        mock_ewfumount.assert_called_once_with()
+
+    @patch.object(mount_utils.BlockDevice, "_ewfumount")
+    @patch.object(mount_utils.BlockDevice, "_detach_device")
+    @patch.object(mount_utils.BlockDevice, "_parse_partitions")
+    @patch.object(mount_utils.BlockDevice, "_blkinfo")
+    @patch.object(mount_utils.BlockDevice, "_losetup")
+    @patch.object(mount_utils.BlockDevice, "_required_tools_available")
+    @patch.object(mount_utils.BlockDevice, "_ewfmount")
+    @patch("openrelik_worker_common.mount_utils.pathlib.Path.exists")
+    def test_EwfSetupCleansUpBlockDeviceAndEwfMountOnFailure(
+        self,
+        mock_path_exists,
+        mock_ewfmount,
+        mock_tools,
+        mock_losetup,
+        mock_blkinfo,
+        mock_parse_partitions,
+        mock_detach_device,
+        mock_ewfumount,
+    ):
+        mock_path_exists.return_value = True
+        mock_losetup.return_value = "/dev/loop0"
+        mock_blkinfo.side_effect = RuntimeError("lsblk failed")
+
+        bd = mount_utils.BlockDevice(self.ewf_image_path)
+
+        def _ewfmount():
+            bd.ewf_mount_path = "/mnt/openrelik-ewf-test"
+            return "/mnt/openrelik-ewf-test/ewf1"
+
+        mock_ewfmount.side_effect = _ewfmount
+
+        with self.assertRaises(RuntimeError) as e:
+            bd.setup()
+
+        self.assertEqual(str(e.exception), "lsblk failed")
+        mock_detach_device.assert_called_once_with()
+        mock_ewfumount.assert_called_once_with()
+        mock_parse_partitions.assert_not_called()
+
+    @patch.object(mount_utils.BlockDevice, "_ewfumount")
+    @patch.object(mount_utils.BlockDevice, "_losetup")
+    @patch.object(mount_utils.BlockDevice, "_required_tools_available")
+    @patch.object(mount_utils.BlockDevice, "_ewfmount")
+    @patch("openrelik_worker_common.mount_utils.pathlib.Path.exists")
+    def test_EwfSetupReportsOriginalErrorWhenCleanupFails(
+        self,
+        mock_path_exists,
+        mock_ewfmount,
+        mock_tools,
+        mock_losetup,
+        mock_ewfumount,
+    ):
+        mock_path_exists.return_value = True
+        mock_losetup.side_effect = RuntimeError("losetup failed")
+        mock_ewfumount.side_effect = RuntimeError("cleanup failed")
+
+        bd = mount_utils.BlockDevice(self.ewf_image_path)
+
+        def _ewfmount():
+            bd.ewf_mount_path = "/mnt/openrelik-ewf-test"
+            return "/mnt/openrelik-ewf-test/ewf1"
+
+        mock_ewfmount.side_effect = _ewfmount
+
+        with self.assertLogs("openrelik_worker_common.mount_utils", level="ERROR"):
+            with self.assertRaises(RuntimeError) as e:
+                bd.setup()
+
+        self.assertEqual(str(e.exception), "losetup failed")
+        mock_ewfumount.assert_called_once_with()
+
+    @patch("openrelik_worker_common.mount_utils.tempfile.mkdtemp")
+    @patch("openrelik_worker_common.mount_utils.shutil.which")
+    @patch("openrelik_worker_common.mount_utils.subprocess.run")
+    @patch("openrelik_worker_common.mount_utils.os.path.exists")
+    def test_EwfMountUsesMountroot(
+        self, mock_exists, mock_subprocess, mock_which, mock_mkdtemp
+    ):
+        mock_which.return_value = "/usr/bin/ewfmount"
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stdout="", stderr="", returncode=0
+        )
+        mock_mkdtemp.return_value = "/custom-mnt/openrelik-ewf-test"
+        mock_exists.return_value = True
+
+        bd = mount_utils.BlockDevice(self.ewf_image_path)
+        bd.mountroot = "/custom-mnt"
+        raw_image_path = bd._ewfmount()
+
+        mock_mkdtemp.assert_called_once_with(
+            prefix="openrelik-ewf-", dir="/custom-mnt"
+        )
+        self.assertEqual(raw_image_path, "/custom-mnt/openrelik-ewf-test/ewf1")
+
+    @patch("openrelik_worker_common.mount_utils.shutil.rmtree")
+    @patch("openrelik_worker_common.mount_utils.time.sleep")
+    @patch("openrelik_worker_common.mount_utils.subprocess.run")
+    @patch("openrelik_worker_common.mount_utils.shutil.which")
+    def test_EwfUmountKeepsMountPathOnFailure(
+        self, mock_which, mock_subprocess, mock_sleep, mock_rmtree
+    ):
+        mock_which.return_value = "/usr/bin/tool"
+        mock_subprocess.return_value = subprocess.CompletedProcess(
+            args=[], stdout="", stderr="target is busy", returncode=1
+        )
+
+        bd = mount_utils.BlockDevice(self.ewf_image_path)
+        bd.ewf_mount_path = "/mnt/openrelik-ewf-test"
+
+        with self.assertRaises(RuntimeError) as e:
+            bd._ewfumount()
+
+        self.assertIn("Error unmounting EWF image mount", str(e.exception))
+        self.assertEqual(bd.ewf_mount_path, "/mnt/openrelik-ewf-test")
+        mock_sleep.assert_called_once_with(0.2)
+        mock_rmtree.assert_not_called()
+
+    @patch.object(mount_utils.BlockDevice, "_parse_partitions")
+    @patch.object(mount_utils.BlockDevice, "_blkinfo")
+    @patch.object(mount_utils.BlockDevice, "_nbdsetup")
+    @patch.object(mount_utils.BlockDevice, "_required_modules_loaded")
+    @patch.object(mount_utils.BlockDevice, "_required_tools_available")
+    @patch("openrelik_worker_common.mount_utils.redis.Redis.from_url")
+    @patch("openrelik_worker_common.mount_utils.pathlib.Path.exists")
+    def test_QcowSetupChecksNbdModule(
+        self,
+        mock_path_exists,
+        mock_redis,
+        mock_tools,
+        mock_modules,
+        mock_nbdsetup,
+        mock_blkinfo,
+        mock_parse_partitions,
+    ):
+        mock_path_exists.return_value = True
+        mock_nbdsetup.return_value = "/dev/nbd0"
+        mock_blkinfo.return_value = {"blockdevices": []}
+        mock_parse_partitions.return_value = []
+
+        bd = mount_utils.BlockDevice("./test_data/image_with_partitions.qcow2")
+        bd.setup()
+
+        mock_modules.assert_called_once_with()
+        mock_nbdsetup.assert_called_once_with()
+        self.assertEqual(bd.blkdevice, "/dev/nbd0")
+
+    @patch.object(mount_utils.BlockDevice, "_ewfumount")
+    @patch.object(mount_utils.BlockDevice, "_detach_device")
+    @patch.object(mount_utils.BlockDevice, "_umount_all")
+    def test_UmountCleansUpEwfMount(
+        self, mock_umount_all, mock_detach_device, mock_ewfumount
+    ):
+        bd = mount_utils.BlockDevice(self.ewf_image_path)
+        bd.blkdevice = "/dev/loop0"
+        bd.ewf_mount_path = "/mnt/openrelik-ewf-test"
+
+        bd.umount()
+
+        mock_umount_all.assert_called_once_with()
+        mock_detach_device.assert_called_once_with()
+        mock_ewfumount.assert_called_once_with()
 
     @patch.object(mount_utils.BlockDevice, "_is_important_partition")
     def test_MountWithNonExistingPartition(self, mock_important):

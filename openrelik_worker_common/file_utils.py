@@ -239,7 +239,7 @@ def is_disk_image(inputfile: dict) -> bool:
     Returns: bool
     Raises: RuntimeError
     """
-    disk_image_extensions = [".img", ".raw", ".dd", ".qcow3", ".qcow2", ".qcow"]
+    disk_image_extensions = [".img", ".raw", ".dd", ".qcow3", ".qcow2", ".qcow", ".e01", ".ex01"]
 
     if "display_name" not in inputfile:
         raise RuntimeError("inputfile parameter malformed, no display_name found")

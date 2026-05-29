@@ -192,6 +192,8 @@ class Utils(unittest.TestCase):
         # Test that extensions are case-insensitive
         self.assertTrue(file_utils.is_disk_image({"display_name": "data.RAW"}))
         self.assertTrue(file_utils.is_disk_image({"display_name": "disk.DD"}))
+        self.assertTrue(file_utils.is_disk_image({"display_name": "evidence.E01"}))
+        self.assertTrue(file_utils.is_disk_image({"display_name": "evidence.EX01"}))
 
     def test_non_disk_image_extensions(self):
         # Test with common file extensions that are not disk images

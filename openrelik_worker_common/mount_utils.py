@@ -20,6 +20,7 @@ import redis
 import shutil
 import socket
 import subprocess
+import tempfile
 import time
 
 from uuid import uuid4
@@ -67,6 +68,7 @@ class BlockDevice:
             min_partition_size (int): minimum partition size, default MIN_PARTITION_SIZE_BYTES
             max_mountpath_size (int): maximum root mount path length, default MAX_MOUNTPATH_SIZE
         """
+        self.original_image_path = image_path
         self.image_path = image_path
         self.min_partition_size = min_partition_size
         self.blkdevice = None
@@ -75,8 +77,10 @@ class BlockDevice:
         self.mountpoints = []
         self.mountroot = "/mnt"
         self.max_mountpath_size = max_mountpath_size
-        self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat"]
+        self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat", "btrfs"]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
+        self.supported_ewftypes = ["e01", "ex01"]
+        self.ewf_mount_path = None
 
         self.REDIS_URL = os.getenv("REDIS_URL") or "redis://localhost:6379/0"
         self.redis_client = None
@@ -102,22 +106,51 @@ class BlockDevice:
         # Check if required tools are available
         self._required_tools_available()
 
-        # Check the required kernel modules are available
-        self._required_modules_loaded()
-
         # Setup the block device
-        ext = image_path.suffix.strip(".")
-        if ext.lower() in self.supported_qcowtypes:
-            self.redis_client = redis.Redis.from_url(self.REDIS_URL)
-            self.blkdevice = self._nbdsetup()
-        else:
-            self.blkdevice = self._losetup()
+        ext = image_path.suffix.strip(".").lower()
+        try:
+            if ext in self.supported_ewftypes:
+                self.image_path = self._ewfmount()
+                image_path = pathlib.Path(self.image_path)
+                ext = image_path.suffix.strip(".").lower()
 
-        # Parse block device info
-        self.blkdeviceinfo = self._blkinfo()
+            if ext in self.supported_qcowtypes:
+                # Check required kernel modules only for disk image formats that use NBD.
+                self._required_modules_loaded()
+                self.redis_client = redis.Redis.from_url(self.REDIS_URL)
+                self.blkdevice = self._nbdsetup()
+            else:
+                self.blkdevice = self._losetup()
 
-        # Parse partition information
-        self.partitions = self._parse_partitions()
+            # Parse block device info
+            self.blkdeviceinfo = self._blkinfo()
+
+            # Parse partition information
+            self.partitions = self._parse_partitions()
+        except Exception:
+            if self.blkdevice:
+                try:
+                    self._detach_device()
+                except RuntimeError as cleanup_error:
+                    logger.error(
+                        f"Error detaching block device after setup failure: {cleanup_error}"
+                    )
+            if self.ewf_mount_path:
+                try:
+                    self._ewfumount()
+                except RuntimeError as cleanup_error:
+                    logger.error(
+                        f"Error cleaning up EWF mount after setup failure: {cleanup_error}"
+                    )
+            if self.redis_lock:
+                try:
+                    self.redis_lock.release()
+                    self.redis_lock = None
+                except Exception as cleanup_error:
+                    logger.error(
+                        f"Error releasing Redis lock after setup failure: {cleanup_error}"
+                    )
+            raise
 
     def _losetup(self) -> str:
         """Map image file to loopback device using losetup.
@@ -258,6 +291,78 @@ class BlockDevice:
             )
 
         return self.blkdevice
+
+    def _ewfmount(self) -> str:
+        """Mount an EWF image and return the raw ewf1 image path.
+
+        Returns:
+            str: raw image path exposed by ewfmount.
+
+        Raises:
+            RuntimeError: if ewfmount is not available or fails.
+        """
+        if not shutil.which("ewfmount"):
+            raise RuntimeError(
+                "Missing required tool: ewfmount. Make sure ewf-tools is installed!"
+            )
+
+        self.ewf_mount_path = tempfile.mkdtemp(
+            prefix="openrelik-ewf-", dir=self.mountroot
+        )
+        process = subprocess.run(
+            ["ewfmount", self.image_path, self.ewf_mount_path],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+        if process.returncode != 0:
+            shutil.rmtree(self.ewf_mount_path, ignore_errors=True)
+            self.ewf_mount_path = None
+            raise RuntimeError(
+                "ewfmount failed for "
+                f"{self.image_path}: {process.stderr} {process.stdout}"
+            )
+
+        raw_image_path = os.path.join(self.ewf_mount_path, "ewf1")
+        if not os.path.exists(raw_image_path):
+            self._ewfumount()
+            raise RuntimeError(
+                f"ewfmount did not expose expected raw image: {raw_image_path}"
+            )
+
+        logger.info(f"ewfmount: success mounting {self.image_path}")
+        return raw_image_path
+
+    def _ewfumount(self) -> None:
+        """Unmount an EWF FUSE mount and remove its mount directory."""
+        if not self.ewf_mount_path:
+            return
+
+        unmount_commands = [
+            ["fusermount3", "-u", self.ewf_mount_path],
+            ["fusermount3", "-u", "-z", self.ewf_mount_path],
+            ["fusermount", "-u", self.ewf_mount_path],
+            ["fusermount", "-u", "-z", self.ewf_mount_path],
+            ["sudo", "umount", self.ewf_mount_path],
+            ["sudo", "umount", "-l", self.ewf_mount_path],
+        ]
+
+        last_error = ""
+        time.sleep(0.2)
+        for command in unmount_commands:
+            if not shutil.which(command[0]):
+                continue
+
+            process = subprocess.run(command, capture_output=True, check=False, text=True)
+            if process.returncode == 0:
+                logger.info(f"ewfmount: success unmounting {self.ewf_mount_path}")
+                shutil.rmtree(self.ewf_mount_path, ignore_errors=True)
+                self.ewf_mount_path = None
+                return
+            last_error = f"{process.stderr} {process.stdout}"
+
+        mount_path = self.ewf_mount_path
+        raise RuntimeError(f"Error unmounting EWF image mount {mount_path}: {last_error}")
 
     def _required_modules_loaded(self) -> None:
         """Checks if a required kernel module is loaded.
@@ -583,7 +688,10 @@ class BlockDevice:
                           detaching the block device fails.
         """
         self._umount_all()
-        self._detach_device()
+        if self.blkdevice:
+            self._detach_device()
+        if self.ewf_mount_path:
+            self._ewfumount()
         if self.redis_lock:
             self.redis_lock.release()
             logger.info(f"Redis lock released: {self.redis_lock.name}")
