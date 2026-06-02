@@ -41,6 +41,16 @@ class Utils(unittest.TestCase):
         expected = "/test/test"
         self.assertEqual(result, expected)
 
+    def test_get_input_files_multiple_pipes(self):
+        """Test get_input_files aggregates output files across pipe results."""
+        first = task_utils.encode_dict_to_base64({"output_files": [{"path": "/a"}]})
+        second = task_utils.encode_dict_to_base64({"output_files": [{"path": "/b"}]})
+
+        result = task_utils.get_input_files(
+            pipe_result=[first, second], input_files=None
+        )
+        self.assertEqual(result, [{"path": "/a"}, {"path": "/b"}])
+
     def test_create_task_result(self):
         """Test create_task_result function."""
         output_files = ["a", "b"]

@@ -68,10 +68,18 @@ def get_input_files(
     if isinstance(pipe_result, str):
         pipe_results.append(pipe_result)
 
-    for pipe_result in pipe_results:
-        result_string = base64.b64decode(pipe_result.encode("utf-8")).decode("utf-8")
-        result_dict = json.loads(result_string)
-        input_files = result_dict.get("output_files", [])
+    def _decode(encoded_result: str) -> dict:
+        result_string = base64.b64decode(encoded_result.encode("utf-8")).decode("utf-8")
+        return json.loads(result_string)
+
+    if len(pipe_results) == 1:
+        input_files = _decode(pipe_results[0]).get("output_files", [])
+    elif pipe_results:
+        # Multiple piped results (e.g. a task downstream of a group): collect
+        # every branch's output files instead of keeping only the last one.
+        input_files = []
+        for encoded_result in pipe_results:
+            input_files.extend(_decode(encoded_result).get("output_files", []))
 
     if filter:
         input_files = filter_compatible_files(input_files, filter)
