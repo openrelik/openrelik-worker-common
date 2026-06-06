@@ -1,6 +1,6 @@
 > [!CAUTION]  
 > # NOTICE - DO NOT USE
-> This repository has been archived and moved to https://github.com/openrelik/openrelik-workers/lib/
+> This repository has been archived and moved to https://github.com/openrelik/openrelik-workers/tree/main/lib
 
 # openrelik-worker-common
 Common utilities for OpenRelik workers
