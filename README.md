@@ -1,4 +1,6 @@
-[![codecov](https://codecov.io/gh/openrelik/openrelik-worker-common/graph/badge.svg?token=T0Z72PB3YL)](https://codecov.io/gh/openrelik/openrelik-worker-common)
+> [!CAUTION]  
+> # NOTICE - DO NOT USE
+> This repository has been archived and moved to https://github.com/openrelik/openrelik-workers/lib/
 
 # openrelik-worker-common
 Common utilities for OpenRelik workers
